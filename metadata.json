@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Personal Finance Tracker",
+  "description": "A personal finance application to track bank accounts, transactions, and categories. It features a dashboard with financial graphs and leverages the Gemini API for intelligent transaction categorization and financial insights.",
+  "requestFramePermissions": []
+}
