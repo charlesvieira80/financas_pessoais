@@ -4,8 +4,8 @@ import { Account, Category, Subcategory, Transaction, TransactionType } from './
 import Dashboard from './components/Dashboard';
 import TransactionsView from './components/TransactionsView';
 import SettingsView from './components/SettingsView';
-import { DashboardIcon, SettingsIcon, TransactionsIcon, DocumentTextIcon, LogoutIcon, SunIcon, MoonIcon } from './components/shared/icons';
 import StatementView from './components/StatementView';
+import { DashboardIcon, SettingsIcon, TransactionsIcon, DocumentTextIcon, LogoutIcon, SunIcon, MoonIcon } from './components/shared/icons';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -52,21 +52,15 @@ const App: React.FC = () => {
     useEffect(() => {
         const appInitialized = localStorage.getItem('finance-app-initialized');
         if (appInitialized) {
-            // Already initialized, do nothing.
             return;
         }
 
-        // Not initialized. Check if data exists from a previous version without the flag.
         const hasOldData = localStorage.getItem('finance-transactions') || localStorage.getItem('finance-accounts');
         if (hasOldData) {
-            // User has data from a version before this initialization logic.
-            // Just set the flag and we're done. No data touched, no reload needed.
             localStorage.setItem('finance-app-initialized', 'true');
             return;
         }
 
-        // This is a true fresh start for a new user. No flag, no data.
-        // Seed the data, set the flag, and reload the page to ensure all hooks read the new data.
         console.log("Seeding initial data for new user.");
         localStorage.setItem('finance-accounts', JSON.stringify(initialAccounts));
         localStorage.setItem('finance-categories', JSON.stringify(initialCategories));
@@ -100,7 +94,7 @@ const App: React.FC = () => {
     const updateCategory = (category: Category) => setCategories(prev => prev.map(c => c.id === category.id ? category : c));
     const deleteCategory = (id: string) => {
         setCategories(prev => prev.filter(c => c.id !== id));
-        setSubcategories(prev => prev.filter(s => s.categoryId !== id)); // Also delete subcategories
+        setSubcategories(prev => prev.filter(s => s.categoryId !== id));
         setTransactions(prev => prev.map(t => t.categoryId === id ? {...t, categoryId: '', subcategoryId: ''} : t));
     };
 
@@ -164,54 +158,88 @@ const App: React.FC = () => {
         <li>
             <button
                 onClick={() => setActiveView(view)}
-                className={`flex items-center p-3 my-1 rounded-lg w-full text-left transition-colors ${activeView === view ? 'bg-sky-600 text-white' : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                className={`flex items-center p-3 my-2 rounded-xl w-full text-left transition-all duration-200 group ${
+                    activeView === view 
+                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30' 
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-slate-800 hover:text-violet-600 dark:hover:text-violet-400'
+                }`}
             >
-                {icon}
+                <span className={`transition-transform duration-200 ${activeView === view ? 'scale-110' : 'group-hover:scale-110'}`}>
+                   {icon}
+                </span>
                 <span className="ml-3 font-medium">{label}</span>
             </button>
         </li>
     );
 
     return (
-        <div className="min-h-screen font-sans text-gray-800 dark:text-slate-200 bg-gray-50 dark:bg-slate-900">
-            <aside className="w-64 bg-white dark:bg-slate-800 p-4 border-r border-gray-200 dark:border-slate-700 hidden md:flex md:flex-col fixed h-full z-10">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-2">
-                    <svg className="w-8 h-8 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span>Minhas Finanças</span>
+        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 selection:bg-violet-200 dark:selection:bg-violet-900">
+            {/* Sidebar Desktop */}
+            <aside className="w-72 bg-white dark:bg-slate-900 p-6 border-r border-slate-200 dark:border-slate-800 hidden md:flex md:flex-col fixed h-full z-20 shadow-xl shadow-slate-200/50 dark:shadow-none">
+                <div className="flex items-center gap-3 mb-10 px-2">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg text-white shadow-lg shadow-violet-500/30">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Gemini<span className="text-violet-600">Finance</span></span>
                 </div>
                 <nav className="flex-grow">
-                    <ul>
-                        <NavItem view="dashboard" label="Painel" icon={<DashboardIcon className="w-6 h-6" />} />
-                        <NavItem view="transactions" label="Transações" icon={<TransactionsIcon className="w-6 h-6" />} />
-                        <NavItem view="statement" label="Extratos" icon={<DocumentTextIcon className="w-6 h-6" />} />
-                        <NavItem view="settings" label="Configurações" icon={<SettingsIcon className="w-6 h-6" />} />
+                    <ul className="space-y-1">
+                        <NavItem view="dashboard" label="Painel Geral" icon={<DashboardIcon className="w-5 h-5" />} />
+                        <NavItem view="transactions" label="Transações" icon={<TransactionsIcon className="w-5 h-5" />} />
+                        <NavItem view="statement" label="Extratos" icon={<DocumentTextIcon className="w-5 h-5" />} />
+                        <NavItem view="settings" label="Configurações" icon={<SettingsIcon className="w-5 h-5" />} />
                     </ul>
                 </nav>
-                <div className="mt-auto space-y-2">
+                
+                <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                     <div className="flex items-center justify-between px-2 mb-2">
+                         <span className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 tracking-wider">Preferências</span>
+                     </div>
+                    <ThemeToggle />
                     <button
                         onClick={logout}
-                        className="flex items-center p-3 my-1 rounded-lg w-full text-left transition-colors text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                        className="flex items-center p-3 rounded-xl w-full text-left transition-colors text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400"
                     >
-                        <LogoutIcon className="w-6 h-6" />
+                        <LogoutIcon className="w-5 h-5" />
                         <span className="ml-3 font-medium">Sair</span>
                     </button>
-                    <ThemeToggle />
                 </div>
             </aside>
-            <main className="md:ml-64 overflow-auto pb-24 md:pb-0">
-                {renderView()}
+
+            {/* Main Content */}
+            <main className="md:ml-72 min-h-screen transition-all duration-300 ease-in-out">
+                 {renderView()}
+                 {/* Bottom spacing for mobile nav */}
+                 <div className="h-24 md:hidden"></div>
             </main>
-             {/* Bottom Nav for Mobile */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 flex justify-around">
-                <button onClick={() => setActiveView('dashboard')} className={`p-4 flex flex-col items-center ${activeView === 'dashboard' ? 'text-sky-500' : 'text-gray-500 dark:text-slate-400'}`}><DashboardIcon /><span className="text-xs mt-1">Painel</span></button>
-                <button onClick={() => setActiveView('transactions')} className={`p-4 flex flex-col items-center ${activeView === 'transactions' ? 'text-sky-500' : 'text-gray-500 dark:text-slate-400'}`}><TransactionsIcon /><span className="text-xs mt-1">Transações</span></button>
-                <button onClick={() => setActiveView('statement')} className={`p-4 flex flex-col items-center ${activeView === 'statement' ? 'text-sky-500' : 'text-gray-500 dark:text-slate-400'}`}><DocumentTextIcon /><span className="text-xs mt-1">Extratos</span></button>
-                <button onClick={() => setActiveView('settings')} className={`p-4 flex flex-col items-center ${activeView === 'settings' ? 'text-sky-500' : 'text-gray-500 dark:text-slate-400'}`}><SettingsIcon /><span className="text-xs mt-1">Ajustes</span></button>
-                <button onClick={logout} className={`p-4 flex flex-col items-center text-gray-500 dark:text-slate-400`}><LogoutIcon /><span className="text-xs mt-1">Sair</span></button>
-                <button onClick={toggleTheme} className={`p-4 flex flex-col items-center text-gray-500 dark:text-slate-400`}>
-                    {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-                    <span className="text-xs mt-1">Tema</span>
-                </button>
+
+             {/* Mobile Navigation */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 flex justify-around items-center p-2 z-50 safe-area-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                {[
+                    { view: 'dashboard', icon: <DashboardIcon />, label: 'Painel' },
+                    { view: 'transactions', icon: <TransactionsIcon />, label: 'Transações' },
+                    { view: 'statement', icon: <DocumentTextIcon />, label: 'Extratos' },
+                    { view: 'settings', icon: <SettingsIcon />, label: 'Ajustes' }
+                ].map((item) => (
+                    <button 
+                        key={item.view}
+                        onClick={() => setActiveView(item.view as ActiveView)} 
+                        className={`p-2 rounded-xl flex flex-col items-center transition-all duration-200 w-16 ${
+                            activeView === item.view 
+                            ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20' 
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                    >
+                        <div className={`w-6 h-6 ${activeView === item.view ? 'scale-110' : ''} transition-transform`}>
+                            {item.icon}
+                        </div>
+                        <span className="text-[10px] font-medium mt-1">{item.label}</span>
+                    </button>
+                ))}
+                 <button onClick={toggleTheme} className="p-2 flex flex-col items-center text-slate-400 dark:text-slate-500">
+                     {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
+                     <span className="text-[10px] font-medium mt-1">Tema</span>
+                 </button>
             </nav>
         </div>
     );

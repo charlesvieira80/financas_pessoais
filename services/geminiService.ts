@@ -16,7 +16,8 @@ export const suggestCategory = async (
 ): Promise<{ categoryId: string; subcategoryId: string } | null> => {
   if (!API_KEY) return null;
 
-  const model = 'gemini-flash-latest';
+  // Changed from 'gemini-flash-latest' to 'gemini-2.5-flash' for better stability and quota management
+  const model = 'gemini-2.5-flash';
   
   const incomeCategories = categories.filter(c => c.type === TransactionType.INCOME).map(c => c.name).join(', ');
   const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE).map(c => c.name).join(', ');
@@ -35,7 +36,9 @@ export const suggestCategory = async (
         contents: prompt
     });
     
-    const suggestedCategoryName = response.text.trim();
+    const suggestedCategoryName = response.text?.trim();
+    if (!suggestedCategoryName) return null;
+
     const foundCategory = categories.find(c => c.name.toLowerCase() === suggestedCategoryName.toLowerCase());
 
     if (foundCategory) {
@@ -59,7 +62,8 @@ export const getFinancialInsights = async (
 ): Promise<string> => {
   if (!API_KEY) return "A chave da API não está configurada. Por favor, configure sua chave da API Gemini.";
 
-  const model = 'gemini-2.5-pro';
+  // Changed from 'gemini-2.5-pro' to 'gemini-2.5-flash' to reduce quota consumption
+  const model = 'gemini-2.5-flash';
 
   const transactionData = transactions.map(t => {
       const category = categories.find(c => c.id === t.categoryId);
@@ -95,9 +99,13 @@ export const getFinancialInsights = async (
         model: model,
         contents: prompt
     });
-    return response.text;
-  } catch (error) {
+    return response.text || "Não foi possível gerar insights.";
+  } catch (error: any) {
     console.error("Error getting financial insights:", error);
+    // Provide more specific feedback if possible
+    if (error.message && (error.message.includes('429') || error.message.includes('quota'))) {
+        return "Você excedeu a cota de uso da API Gemini. Tente novamente mais tarde.";
+    }
     return "Desculpe, não consegui gerar os insights no momento. Por favor, tente novamente mais tarde.";
   }
 };

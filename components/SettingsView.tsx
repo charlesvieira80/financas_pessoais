@@ -5,6 +5,12 @@ import { PencilIcon, PlusIcon, TrashIcon } from './shared/icons';
 import { formatCurrency, translateTransactionType } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 
+// Shared Styling
+const sectionTitleClass = "text-lg font-bold text-slate-800 dark:text-white mb-4";
+const cardClass = "bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800";
+const btnIconClass = "p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
+const listItemClass = "flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all";
+
 // Account Management Component
 const AccountManager: React.FC<{
     accounts: Account[],
@@ -36,26 +42,26 @@ const AccountManager: React.FC<{
     }
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Contas Bancárias</h3>
-                <button onClick={openAddModal} className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-3 rounded-lg"><PlusIcon className="w-5 h-5"/> Add Conta</button>
+        <div className={cardClass}>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className={sectionTitleClass}>Minhas Contas</h3>
+                <button onClick={openAddModal} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-md shadow-violet-500/20 transition-all"><PlusIcon className="w-4 h-4"/> Nova Conta</button>
             </div>
             <ul className="space-y-3">
                 {accounts.map(acc => (
-                    <li key={acc.id} className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg flex justify-between items-center">
+                    <li key={acc.id} className={listItemClass}>
                         <div>
-                            <p className="font-semibold">{acc.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-slate-400">Saldo Inicial: {formatCurrency(acc.initialBalance)}</p>
+                            <p className="font-bold text-slate-800 dark:text-white">{acc.name}</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Saldo Inicial: {formatCurrency(acc.initialBalance)}</p>
                         </div>
-                        <div className="flex gap-3">
-                            <button onClick={() => openEditModal(acc)} className="text-gray-400 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400"><PencilIcon /></button>
-                            <button onClick={() => deleteAccount(acc.id)} className="text-gray-400 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400"><TrashIcon /></button>
+                        <div className="flex gap-1">
+                            <button onClick={() => openEditModal(acc)} className={`${btnIconClass} hover:text-violet-600`}><PencilIcon className="w-4 h-4" /></button>
+                            <button onClick={() => deleteAccount(acc.id)} className={`${btnIconClass} hover:text-rose-600`}><TrashIcon className="w-4 h-4" /></button>
                         </div>
                     </li>
                 ))}
             </ul>
-             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingAccount ? "Editar Conta" : "Adicionar Conta"}>
+             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingAccount ? "Editar Conta" : "Criar Conta"}>
                 <AccountForm account={editingAccount} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
             </Modal>
         </div>
@@ -70,8 +76,8 @@ const AccountForm: React.FC<{
     const [name, setName] = useState(account?.name || '');
     const [initialBalance, setInitialBalance] = useState(account?.initialBalance || 0);
     
-    const labelClass = "block text-sm font-medium text-gray-600 dark:text-slate-300";
-    const inputClass = "mt-1 w-full bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-md p-2 border border-gray-300 dark:border-slate-600";
+    const labelClass = "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1";
+    const inputClass = "w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 outline-none transition-all";
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,15 +88,15 @@ const AccountForm: React.FC<{
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className={labelClass}>Nome da Conta</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClass}/>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClass} placeholder="Ex: Nubank"/>
             </div>
             <div>
                 <label className={labelClass}>Saldo Inicial</label>
                 <input type="number" step="0.01" value={initialBalance} onChange={e => setInitialBalance(parseFloat(e.target.value))} required className={inputClass}/>
             </div>
-             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+             <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium">Cancelar</button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
         </form>
     );
@@ -128,46 +134,45 @@ const CategoryManager: React.FC<{
     };
     
     return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Categorias</h3>
-                <button onClick={() => { setEditingCategory(null); setIsCatModalOpen(true); }} className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-3 rounded-lg"><PlusIcon className="w-5 h-5"/> Add Categoria</button>
+        <div className={cardClass}>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className={sectionTitleClass}>Categorias de Transação</h3>
+                <button onClick={() => { setEditingCategory(null); setIsCatModalOpen(true); }} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-md shadow-violet-500/20 transition-all"><PlusIcon className="w-4 h-4"/> Nova Categoria</button>
             </div>
             <div className="space-y-4">
                 {categories.map(cat => (
-                    <div key={cat.id} className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
-                        <div className="flex justify-between items-center">
+                    <div key={cat.id} className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="flex justify-between items-center mb-2">
                            <div className="flex items-center gap-3">
-                             <span className={`px-2 py-1 text-xs rounded ${cat.type === TransactionType.INCOME ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>{translateTransactionType(cat.type)}</span>
-                             <p className="font-semibold">{cat.name}</p>
+                             <span className={`px-2.5 py-1 text-[10px] uppercase font-bold tracking-wide rounded-full ${cat.type === TransactionType.INCOME ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>{translateTransactionType(cat.type)}</span>
+                             <p className="font-bold text-slate-800 dark:text-white">{cat.name}</p>
                            </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => { setEditingCategory(cat); setIsCatModalOpen(true); }} className="text-gray-400 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400"><PencilIcon /></button>
-                                <button onClick={() => props.deleteCategory(cat.id)} className="text-gray-400 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400"><TrashIcon /></button>
+                            <div className="flex gap-1">
+                                <button onClick={() => { setEditingCategory(cat); setIsCatModalOpen(true); }} className={`${btnIconClass} hover:text-violet-600`}><PencilIcon className="w-4 h-4" /></button>
+                                <button onClick={() => props.deleteCategory(cat.id)} className={`${btnIconClass} hover:text-rose-600`}><TrashIcon className="w-4 h-4" /></button>
                             </div>
                         </div>
-                        <ul className="mt-3 ml-6 space-y-2">
+                        
+                        <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700 ml-2 space-y-1">
                            {subcategories.filter(s => s.categoryId === cat.id).map(sub => (
-                               <li key={sub.id} className="text-gray-600 dark:text-slate-300 flex justify-between items-center">
-                                   <span>- {sub.name}</span>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => { setEditingSubcategory(sub); setIsSubcatModalOpen(true); }} className="text-gray-400 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400"><PencilIcon className="w-4 h-4" /></button>
-                                        <button onClick={() => props.deleteSubcategory(sub.id)} className="text-gray-400 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400"><TrashIcon className="w-4 h-4" /></button>
+                               <div key={sub.id} className="flex justify-between items-center py-1 group">
+                                   <span className="text-sm text-slate-600 dark:text-slate-400">{sub.name}</span>
+                                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => { setEditingSubcategory(sub); setIsSubcatModalOpen(true); }} className="p-1 text-slate-400 hover:text-violet-500"><PencilIcon className="w-3 h-3" /></button>
+                                        <button onClick={() => props.deleteSubcategory(sub.id)} className="p-1 text-slate-400 hover:text-rose-500"><TrashIcon className="w-3 h-3" /></button>
                                     </div>
-                               </li>
+                               </div>
                            ))}
-                           <li>
-                               <button onClick={() => {setParentCategoryId(cat.id); setEditingSubcategory(null); setIsSubcatModalOpen(true);}} className="text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300 text-sm flex items-center gap-1"><PlusIcon className="w-4 h-4" /> Add Subcategoria</button>
-                           </li>
-                        </ul>
+                           <button onClick={() => {setParentCategoryId(cat.id); setEditingSubcategory(null); setIsSubcatModalOpen(true);}} className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 mt-2 flex items-center gap-1 transition-colors"><PlusIcon className="w-3 h-3" /> Adicionar subcategoria</button>
+                        </div>
                     </div>
                 ))}
             </div>
 
-            <Modal isOpen={isCatModalOpen} onClose={() => setIsCatModalOpen(false)} title={editingCategory ? "Editar Categoria" : "Adicionar Categoria"}>
+            <Modal isOpen={isCatModalOpen} onClose={() => setIsCatModalOpen(false)} title={editingCategory ? "Editar Categoria" : "Nova Categoria"}>
                 <CategoryForm category={editingCategory} onSave={handleSaveCategory} onClose={() => setIsCatModalOpen(false)} />
             </Modal>
-             <Modal isOpen={isSubcatModalOpen} onClose={() => setIsSubcatModalOpen(false)} title={editingSubcategory ? "Editar Subcategoria" : "Adicionar Subcategoria"}>
+             <Modal isOpen={isSubcatModalOpen} onClose={() => setIsSubcatModalOpen(false)} title={editingSubcategory ? "Editar Subcategoria" : "Nova Subcategoria"}>
                 <SubcategoryForm subcategory={editingSubcategory} parentCategoryId={parentCategoryId} onSave={handleSaveSubcategory} onClose={() => setIsSubcatModalOpen(false)} />
             </Modal>
         </div>
@@ -182,9 +187,8 @@ const CategoryForm: React.FC<{
     const [name, setName] = useState(category?.name || '');
     const [type, setType] = useState(category?.type || TransactionType.EXPENSE);
     
-    const labelClass = "block text-sm font-medium text-gray-600 dark:text-slate-300";
-    const inputClass = "mt-1 w-full bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-md p-2 border border-gray-300 dark:border-slate-600";
-
+    const labelClass = "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1";
+    const inputClass = "w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 outline-none transition-all";
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -194,19 +198,19 @@ const CategoryForm: React.FC<{
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className={labelClass}>Nome da Categoria</label>
+                <label className={labelClass}>Nome</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClass}/>
             </div>
             <div>
-                <label className={labelClass}>Tipo</label>
+                <label className={labelClass}>Tipo de Transação</label>
                  <select value={type} onChange={e => setType(e.target.value as TransactionType)} className={inputClass}>
                     <option value={TransactionType.EXPENSE}>{translateTransactionType(TransactionType.EXPENSE)}</option>
                     <option value={TransactionType.INCOME}>{translateTransactionType(TransactionType.INCOME)}</option>
                 </select>
             </div>
-             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+             <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium">Cancelar</button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
         </form>
     );
@@ -220,9 +224,8 @@ const SubcategoryForm: React.FC<{
 }> = ({ subcategory, parentCategoryId, onSave, onClose }) => {
     const [name, setName] = useState(subcategory?.name || '');
 
-    const labelClass = "block text-sm font-medium text-gray-600 dark:text-slate-300";
-    const inputClass = "mt-1 w-full bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-md p-2 border border-gray-300 dark:border-slate-600";
-
+    const labelClass = "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1";
+    const inputClass = "w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 outline-none transition-all";
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -235,9 +238,9 @@ const SubcategoryForm: React.FC<{
                 <label className={labelClass}>Nome da Subcategoria</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClass}/>
             </div>
-             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+             <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium">Cancelar</button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
         </form>
     );
@@ -279,12 +282,12 @@ const PasswordManager: React.FC = () => {
         setSuccess('');
 
         if (passwordStrength < 4) {
-            setError('A nova senha não é forte o suficiente. Use pelo menos 8 caracteres, incluindo maiúsculas, minúsculas, números e símbolos.');
+            setError('A nova senha é muito fraca.');
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            setError('A nova senha e a confirmação não correspondem.');
+            setError('As senhas não coincidem.');
             return;
         }
 
@@ -300,42 +303,42 @@ const PasswordManager: React.FC = () => {
         }
     };
     
-    const strengthColors = ['bg-gray-300', 'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-green-500'];
-    const strengthLabels = ['Muito Fraca', 'Fraca', 'Razoável', 'Boa', 'Forte', 'Muito Forte'];
+    const strengthColors = ['bg-slate-200', 'bg-rose-500', 'bg-orange-500', 'bg-amber-400', 'bg-lime-500', 'bg-emerald-500'];
+    const strengthLabels = ['', 'Fraca', 'Razoável', 'Boa', 'Forte', 'Excelente'];
 
-    const labelClass = "block text-sm font-medium text-gray-600 dark:text-slate-300";
-    const inputClass = "mt-1 w-full bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-md p-2 border border-gray-300 dark:border-slate-600 focus:ring-sky-500 focus:border-sky-500";
+    const labelClass = "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1";
+    const inputClass = "w-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 outline-none transition-all";
 
 
     return (
-        <div>
-            <h3 className="text-xl font-semibold mb-4">Alterar Senha</h3>
-            <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+        <div className={cardClass}>
+            <h3 className={sectionTitleClass}>Segurança da Conta</h3>
+            <form onSubmit={handleSubmit} className="space-y-5 max-w-lg">
                 <div>
-                    <label className={labelClass} htmlFor="current-password">Senha Atual</label>
-                    <input id="current-password" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={inputClass}/>
+                    <label className={labelClass}>Senha Atual</label>
+                    <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={inputClass}/>
                 </div>
                 <div>
-                    <label className={labelClass} htmlFor="new-password">Nova Senha</label>
-                    <input id="new-password" type="password" value={newPassword} onChange={handleNewPasswordChange} required className={inputClass}/>
-                     <div className="mt-2">
-                        <div className="h-2 w-full bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
-                           <div className={`h-full transition-all duration-300 ${strengthColors[passwordStrength]}`} style={{ width: `${(passwordStrength / 5) * 100}%` }}></div>
+                    <label className={labelClass}>Nova Senha</label>
+                    <input type="password" value={newPassword} onChange={handleNewPasswordChange} required className={inputClass}/>
+                     <div className="mt-2 flex items-center gap-3">
+                        <div className="flex-grow h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                           <div className={`h-full transition-all duration-500 ease-out ${strengthColors[passwordStrength]}`} style={{ width: `${(passwordStrength / 5) * 100}%` }}></div>
                         </div>
-                        <p className="text-xs text-right mt-1 text-gray-500 dark:text-slate-400" aria-live="polite">{strengthLabels[passwordStrength]}</p>
+                        <span className="text-xs font-medium text-slate-500 w-16 text-right">{strengthLabels[passwordStrength]}</span>
                      </div>
-                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">A senha deve ter no mínimo 8 caracteres, com letras maiúsculas, minúsculas, números e símbolos.</p>
+                     <p className="text-xs text-slate-400 mt-1">Use 8+ caracteres, maiúsculas, números e símbolos.</p>
                 </div>
                  <div>
-                    <label className={labelClass} htmlFor="confirm-password">Confirmar Nova Senha</label>
-                    <input id="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass}/>
+                    <label className={labelClass}>Confirmar Nova Senha</label>
+                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass}/>
                 </div>
 
-                {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
-                {success && <p className="text-sm text-green-500" role="alert">{success}</p>}
+                {error && <div className="p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm rounded-lg">{error}</div>}
+                {success && <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-sm rounded-lg">{success}</div>}
                 
-                <div className="flex justify-end pt-2">
-                    <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Salvar Nova Senha</button>
+                <div className="pt-2">
+                    <button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md shadow-violet-500/20 transition-all">Atualizar Senha</button>
                 </div>
             </form>
         </div>
@@ -346,15 +349,34 @@ const PasswordManager: React.FC = () => {
 export const SettingsView: React.FC<any> = (props) => {
     const [activeTab, setActiveTab] = useState('accounts');
 
+    const tabs = [
+        { id: 'accounts', label: 'Contas Bancárias' },
+        { id: 'categories', label: 'Categorias' },
+        { id: 'security', label: 'Segurança' },
+    ];
+
     return (
-        <div className="p-4 md:p-8 text-gray-800 dark:text-white">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-6">Configurações</h1>
-            <div className="flex border-b border-gray-200 dark:border-slate-700 mb-6">
-                <button onClick={() => setActiveTab('accounts')} className={`px-4 py-2 font-semibold ${activeTab === 'accounts' ? 'text-sky-500 border-b-2 border-sky-500' : 'text-gray-500 dark:text-slate-400'}`}>Contas</button>
-                <button onClick={() => setActiveTab('categories')} className={`px-4 py-2 font-semibold ${activeTab === 'categories' ? 'text-sky-500 border-b-2 border-sky-500' : 'text-gray-500 dark:text-slate-400'}`}>Categorias</button>
-                <button onClick={() => setActiveTab('security')} className={`px-4 py-2 font-semibold ${activeTab === 'security' ? 'text-sky-500 border-b-2 border-sky-500' : 'text-gray-500 dark:text-slate-400'}`}>Segurança</button>
+        <div className="p-6 md:p-10 max-w-5xl mx-auto">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Configurações</h1>
+            <p className="text-slate-500 dark:text-slate-400 mb-8">Gerencie suas preferências e dados do sistema.</p>
+            
+            <div className="flex gap-1 bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl w-fit mb-8">
+                {tabs.map(tab => (
+                    <button 
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)} 
+                        className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                            activeTab === tab.id 
+                            ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' 
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
+            
+            <div className="transition-all duration-300 ease-in-out">
                 {activeTab === 'accounts' && <AccountManager {...props} />}
                 {activeTab === 'categories' && <CategoryManager {...props} />}
                 {activeTab === 'security' && <PasswordManager />}

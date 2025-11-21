@@ -6,7 +6,8 @@ import { getFinancialInsights } from '../services/geminiService';
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from './shared/icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
+// Modern palette for charts
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#3b82f6', '#06b6d4', '#ec4899'];
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -23,15 +24,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
     const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     
-    const gridColor = theme === 'dark' ? '#374151' : '#e5e7eb';
-    const textColor = theme === 'dark' ? '#9ca3af' : '#6b7280';
-    const tooltipBg = theme === 'dark' ? '#1f2937' : '#ffffff';
-    const tooltipBorder = theme === 'dark' ? '#374151' : '#e5e7eb';
+    const gridColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+    const textColor = theme === 'dark' ? '#94a3b8' : '#64748b';
+    const tooltipBg = theme === 'dark' ? '#1e293b' : '#ffffff';
+    const tooltipBorder = theme === 'dark' ? '#334155' : '#e2e8f0';
 
     const changeMonth = (offset: number) => {
         setCurrentDate(prev => {
             const newDate = new Date(prev);
-            newDate.setDate(1); // Avoid month skipping issues
+            newDate.setDate(1); 
             newDate.setMonth(newDate.getMonth() + offset);
             return newDate;
         });
@@ -59,7 +60,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         if (!years.has(currentYear)) {
             years.add(currentYear);
         }
-        // FIX: Explicitly cast sort parameters to Number to resolve arithmetic operation error.
         return Array.from(years).sort((a, b) => Number(b) - Number(a));
     }, [transactions]);
 
@@ -121,7 +121,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
 
     const pieChartData = useMemo(() => {
         if (!selectedCategoryId) {
-            // Group by Category
             const dataMap = new Map<string, { id: string; name: string; value: number }>();
             nonTransferTransactions.forEach(t => {
                 if (t.type === TransactionType.EXPENSE && t.categoryId) {
@@ -134,13 +133,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
             });
             return Array.from(dataMap.values()).sort((a, b) => b.value - a.value);
         } else {
-            // Group by Subcategory for the selected Category
             const dataMap = new Map<string, { id: string; name: string; value: number }>();
             nonTransferTransactions
                 .filter(t => t.categoryId === selectedCategoryId && t.type === TransactionType.EXPENSE)
                 .forEach(t => {
                     let subcategoryName = 'Outros';
-                    let subcategoryId = `other-${selectedCategoryId}`; // Unique key for uncategorized within a category
+                    let subcategoryId = `other-${selectedCategoryId}`; 
 
                     if (t.subcategoryId) {
                         const sub = subcategories.find(s => s.id === t.subcategoryId);
@@ -206,98 +204,122 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
     
     const pieChartTitle = selectedCategoryId 
         ? `Gastos em "${selectedCategoryName}"` 
-        : `Gastos por Categoria (${currentPeriodLabel})`;
+        : `Gastos por Categoria`;
 
     return (
-        <div className="p-4 md:p-8 text-gray-800 dark:text-white space-y-8">
-            <header>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Painel</h1>
-                <p className="text-gray-500 dark:text-slate-400 mt-1">Sua visão geral financeira, mês a mês.</p>
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Financeiro</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Visão geral do seu patrimônio e movimentações.</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+                        <button onClick={() => setViewMode('monthly')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'monthly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Mensal</button>
+                        <button onClick={() => setViewMode('yearly')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'yearly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Anual</button>
+                    </div>
+
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-1"></div>
+
+                    <div className="flex items-center gap-2">
+                        {viewMode === 'monthly' ? (
+                            <>
+                                <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
+                                <span className="text-sm font-bold w-32 text-center text-slate-700 dark:text-slate-200">{formatMonthYear(currentDate)}</span>
+                                <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon className="w-5 h-5" /></button>
+                            </>
+                        ) : (
+                            <>
+                                <button onClick={() => changeYear(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
+                                <span className="text-sm font-bold w-20 text-center text-slate-700 dark:text-slate-200">{currentDate.getFullYear()}</span>
+                                <button onClick={() => changeYear(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon className="w-5 h-5" /></button>
+                            </>
+                        )}
+                    </div>
+                </div>
             </header>
             
-            <div className="flex justify-center bg-gray-200 dark:bg-slate-700/50 rounded-lg p-1 w-fit mx-auto">
-              <button onClick={() => setViewMode('monthly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${viewMode === 'monthly' ? 'bg-sky-600 text-white shadow' : 'text-gray-600 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600/50'}`}>Mensal</button>
-              <button onClick={() => setViewMode('yearly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${viewMode === 'yearly' ? 'bg-sky-600 text-white shadow' : 'text-gray-600 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600/50'}`}>Anual</button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                {viewMode === 'monthly' ? (
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors" aria-label="Mês anterior">
-                            <ChevronLeftIcon />
-                        </button>
-                        <span className="text-xl font-semibold w-40 text-center">{formatMonthYear(currentDate)}</span>
-                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors" aria-label="Próximo mês">
-                            <ChevronRightIcon />
-                        </button>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => changeYear(-1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors" aria-label="Ano anterior">
-                            <ChevronLeftIcon />
-                        </button>
-                        <span className="text-xl font-semibold w-40 text-center">{currentDate.getFullYear()}</span>
-                        <button onClick={() => changeYear(1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors" aria-label="Próximo ano">
-                            <ChevronRightIcon />
-                        </button>
-                    </div>
-                )}
-                <select 
-                    value={currentDate.getFullYear()} 
-                    onChange={handleYearChange} 
-                    className="bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-md py-2 px-3 border border-gray-300 dark:border-slate-600 focus:ring-sky-500 focus:border-sky-500 font-semibold"
-                    aria-label="Selecione o ano"
-                >
-                    {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
-                </select>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg col-span-1 md:col-span-3">
-                    <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-200 mb-2">Saldo Total</h2>
-                    <p className="text-4xl font-bold text-sky-500 dark:text-sky-400">{formatCurrency(totalBalance)}</p>
-                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Em {endOfPeriodFormatted}</p>
+            {/* Total Balance Card */}
+            <div className="relative overflow-hidden bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group">
+                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
+                <h2 className="relative text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Acumulado</h2>
+                <div className="relative flex items-baseline gap-2">
+                    <span className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
+                        {formatCurrency(totalBalance)}
+                    </span>
                 </div>
+                <p className="relative mt-2 text-sm font-medium text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    Atualizado em {endOfPeriodFormatted}
+                </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
-                    <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-200 mb-4">Receitas vs. Despesas ({currentPeriodLabel})</h2>
-                    <div className="h-80">
+                {/* Area Chart */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
+                    <div className="mb-6">
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Fluxo de Caixa</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Entradas vs Saídas em {currentPeriodLabel}</p>
+                    </div>
+                    <div className="h-80 w-full">
                          <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={viewMode === 'monthly' ? dailyData : monthlyData}>
                                 <defs>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                     </linearGradient>
                                     <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.8}/>
+                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
                                         <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                                <XAxis dataKey={viewMode === 'monthly' ? "date" : "month"} stroke={textColor} tickFormatter={viewMode === 'monthly' ? (value) => `Dia ${value}` : undefined} />
-                                <YAxis stroke={textColor} allowDecimals={false} tickFormatter={(value) => `${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} />
-                                <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '0.5rem' }} formatter={(value) => formatCurrency(value as number)}/>
-                                <Legend wrapperStyle={{ color: textColor }}/>
-                                <Area type="monotone" dataKey="receita" name="Receitas" stroke="#10b981" fillOpacity={1} fill="url(#colorIncome)" />
-                                <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" fillOpacity={1} fill="url(#colorExpense)" />
+                                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                                <XAxis 
+                                    dataKey={viewMode === 'monthly' ? "date" : "month"} 
+                                    stroke={textColor} 
+                                    tick={{fontSize: 12}}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={10}
+                                    tickFormatter={viewMode === 'monthly' ? (value) => `${value}` : undefined} 
+                                />
+                                <YAxis 
+                                    stroke={textColor} 
+                                    allowDecimals={false} 
+                                    tick={{fontSize: 12}}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} 
+                                />
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} 
+                                    formatter={(value) => formatCurrency(value as number)}
+                                    labelStyle={{ color: textColor, fontWeight: 'bold', marginBottom: '4px' }}
+                                />
+                                <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+                                <Area type="monotone" dataKey="receita" name="Receitas" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                                <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" activeDot={{ r: 6, strokeWidth: 0 }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-200">{pieChartTitle}</h2>
+                {/* Pie Chart */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{pieChartTitle}</h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Distribuição de despesas</p>
+                        </div>
                         {selectedCategoryId && (
-                            <button onClick={() => setSelectedCategoryId(null)} className="text-sm font-semibold text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300 transition-colors">
-                                &larr; Voltar para Categorias
+                            <button onClick={() => setSelectedCategoryId(null)} className="text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-3 py-1 rounded-full hover:bg-violet-100 transition-colors">
+                                &larr; Voltar
                             </button>
                         )}
                     </div>
-                     <div className="h-80">
+                     <div className="h-80 w-full relative">
                         {pieChartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -305,61 +327,105 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                         data={pieChartData}
                                         cx="50%"
                                         cy="50%"
-                                        labelLine={false}
+                                        innerRadius={60}
                                         outerRadius={100}
-                                        fill="#8884d8"
+                                        paddingAngle={5}
                                         dataKey="value"
                                         nameKey="name"
-                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                        stroke="none"
                                         onClick={handlePieClick}
-                                        className="cursor-pointer"
+                                        className="cursor-pointer focus:outline-none"
                                     >
                                         {pieChartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="stroke-white dark:stroke-slate-900 stroke-2" />
                                         ))}
                                     </Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '0.5rem' }} formatter={(value, name) => [formatCurrency(value as number), name]} />
-                                    <Legend wrapperStyle={{ color: textColor }} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} 
+                                        itemStyle={{ color: textColor }}
+                                        formatter={(value, name) => [formatCurrency(value as number), name]} 
+                                    />
+                                    <Legend 
+                                        layout="vertical" 
+                                        verticalAlign="middle" 
+                                        align="right"
+                                        iconType="circle"
+                                        wrapperStyle={{ color: textColor, fontSize: '12px' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500 dark:text-slate-400">
-                                {selectedCategoryId ? 'Nenhum dado de subcategoria para este período.' : 'Nenhum dado de despesa para este período.'}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-full mb-3">
+                                    <SparklesIcon className="w-8 h-8 opacity-50" />
+                                </div>
+                                <p className="text-sm">Sem dados para exibir</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
-                <div className="flex flex-col md:flex-row justify-between md:items-center mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-200">Assistente Financeiro com IA</h2>
-                     <button
-                        onClick={handleGetInsights}
-                        disabled={isLoadingInsights || nonTransferTransactions.length === 0}
-                        className="mt-4 md:mt-0 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 disabled:bg-slate-400 dark:disabled:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:cursor-not-allowed"
-                    >
-                        <SparklesIcon className="h-5 w-5" />
-                        {isLoadingInsights ? 'Analisando...' : `Obter Insights para ${currentPeriodLabel}`}
-                    </button>
-                </div>
-                {isLoadingInsights && <div className="text-center text-gray-500 dark:text-slate-400">Gerando seu resumo financeiro...</div>}
-                {insights && (
-                    <div className="prose dark:prose-invert prose-p:text-gray-600 dark:prose-p:text-slate-300 prose-headings:text-gray-800 dark:prose-headings:text-slate-100 prose-strong:text-gray-900 dark:prose-strong:text-white mt-4 bg-gray-100 dark:bg-slate-700/50 p-4 rounded-md whitespace-pre-wrap">
-                        {insights.split('\n').map((line, index) => {
-                            if (line.startsWith('* ')) {
-                                return <p key={index} className="flex items-start"><span className="mr-2 mt-1">&#8226;</span><span>{line.substring(2)}</span></p>;
-                            }
-                            return <p key={index}>{line}</p>
-                        })}
+            {/* AI Insights Section */}
+            <div className="relative bg-gradient-to-br from-slate-900 to-violet-900 dark:from-slate-800 dark:to-violet-950 p-1 rounded-3xl shadow-xl">
+                <div className="bg-white/5 dark:bg-slate-900/50 backdrop-blur-sm p-6 md:p-8 rounded-[20px] text-white h-full">
+                    <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg shadow-lg shadow-orange-500/20">
+                                <SparklesIcon className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold">Assistente Financeiro Inteligente</h2>
+                                <p className="text-slate-300 text-sm">Análise baseada em IA dos seus hábitos.</p>
+                            </div>
+                        </div>
+                         <button
+                            onClick={handleGetInsights}
+                            disabled={isLoadingInsights || nonTransferTransactions.length === 0}
+                            className="group relative overflow-hidden bg-white text-violet-900 hover:text-white font-bold py-2.5 px-6 rounded-xl transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <span className="absolute inset-0 w-full h-full bg-violet-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
+                            <span className="relative flex items-center gap-2">
+                                {isLoadingInsights ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-violet-900/30 border-t-violet-900 rounded-full animate-spin"></div>
+                                        <span>Processando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SparklesIcon className="h-4 w-4" />
+                                        <span>Gerar Insights</span>
+                                    </>
+                                )}
+                            </span>
+                        </button>
                     </div>
-                )}
-                 {!insights && !isLoadingInsights && nonTransferTransactions.length > 0 && (
-                    <p className="text-gray-500 dark:text-slate-400 text-center py-4">Clique no botão acima para obter insights financeiros personalizados para este período.</p>
-                )}
-                 {!insights && !isLoadingInsights && nonTransferTransactions.length === 0 && filteredTransactionsByDate.length > 0 && (
-                     <p className="text-gray-500 dark:text-slate-400 text-center py-4">Apenas transferências foram registradas neste período. Clique para obter insights de um período diferente.</p>
-                 )}
+                    
+                    <div className="min-h-[100px] bg-black/20 rounded-xl p-6 backdrop-blur-md border border-white/10">
+                        {insights ? (
+                            <div className="prose prose-invert max-w-none prose-p:text-slate-200 prose-headings:text-white prose-strong:text-amber-300">
+                                {insights.split('\n').map((line, index) => {
+                                    if (line.startsWith('* ')) {
+                                        return <p key={index} className="flex items-start gap-2 mb-2"><span className="text-amber-400 mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 block flex-shrink-0"></span><span>{line.substring(2)}</span></p>;
+                                    }
+                                    return <p key={index} className="mb-2 leading-relaxed">{line}</p>
+                                })}
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-4">
+                                {isLoadingInsights ? (
+                                    <p className="animate-pulse">A IA está analisando suas finanças...</p>
+                                ) : nonTransferTransactions.length === 0 && filteredTransactionsByDate.length > 0 ? (
+                                    <p>Apenas transferências detectadas. Mude o período para ver análises de gastos.</p>
+                                ) : nonTransferTransactions.length > 0 ? (
+                                    <p>Clique no botão acima para descobrir oportunidades de economia.</p>
+                                ) : (
+                                    <p>Nenhuma transação registrada neste período.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
