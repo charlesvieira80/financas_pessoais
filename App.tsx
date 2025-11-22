@@ -49,6 +49,14 @@ const initialTransactions: Transaction[] = [
 
 
 const App: React.FC = () => {
+    const [accounts, setAccounts] = useLocalStorage<Account[]>('finance-accounts', []);
+    const [categories, setCategories] = useLocalStorage<Category[]>('finance-categories', []);
+    const [subcategories, setSubcategories] = useLocalStorage<Subcategory[]>('finance-subcategories', []);
+    const [transactions, setTransactions] = useLocalStorage<Transaction[]>('finance-transactions', []);
+    const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+    const { isAuthenticated, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
+
     useEffect(() => {
         const appInitialized = localStorage.getItem('finance-app-initialized');
         if (appInitialized) {
@@ -62,21 +70,16 @@ const App: React.FC = () => {
         }
 
         console.log("Seeding initial data for new user.");
-        localStorage.setItem('finance-accounts', JSON.stringify(initialAccounts));
-        localStorage.setItem('finance-categories', JSON.stringify(initialCategories));
-        localStorage.setItem('finance-subcategories', JSON.stringify(initialSubcategories));
-        localStorage.setItem('finance-transactions', JSON.stringify(initialTransactions));
+        
+        // FIX: Instead of setting localStorage manually and reloading (which breaks previews),
+        // we use the state setters. The useLocalStorage hook will handle the persistence automatically.
+        setAccounts(initialAccounts);
+        setCategories(initialCategories);
+        setSubcategories(initialSubcategories);
+        setTransactions(initialTransactions);
+        
         localStorage.setItem('finance-app-initialized', 'true');
-        window.location.reload();
     }, []);
-
-    const [accounts, setAccounts] = useLocalStorage<Account[]>('finance-accounts', []);
-    const [categories, setCategories] = useLocalStorage<Category[]>('finance-categories', []);
-    const [subcategories, setSubcategories] = useLocalStorage<Subcategory[]>('finance-subcategories', []);
-    const [transactions, setTransactions] = useLocalStorage<Transaction[]>('finance-transactions', []);
-    const [activeView, setActiveView] = useState<ActiveView>('dashboard');
-    const { isAuthenticated, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
 
     const addAccount = (account: Omit<Account, 'id'>): Account => {
         const newAccount = { ...account, id: crypto.randomUUID() };
@@ -180,7 +183,7 @@ const App: React.FC = () => {
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg text-white shadow-lg shadow-violet-500/30">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Gemini<span className="text-violet-600">Finance</span></span>
+                    <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Minhas <span className="text-violet-600">Finanças</span></span>
                 </div>
                 <nav className="flex-grow">
                     <ul className="space-y-1">
@@ -206,11 +209,9 @@ const App: React.FC = () => {
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="md:ml-72 min-h-screen transition-all duration-300 ease-in-out">
+            {/* Main Content - Added padding-bottom for mobile nav visibility */}
+            <main className="md:ml-72 min-h-screen transition-all duration-300 ease-in-out pb-24 md:pb-0">
                  {renderView()}
-                 {/* Bottom spacing for mobile nav */}
-                 <div className="h-24 md:hidden"></div>
             </main>
 
              {/* Mobile Navigation */}

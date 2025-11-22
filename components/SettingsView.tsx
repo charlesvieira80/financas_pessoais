@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Shared Styling
 const sectionTitleClass = "text-lg font-bold text-slate-800 dark:text-white mb-4";
-const cardClass = "bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800";
+const cardClass = "bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 dark:border-slate-800";
 const btnIconClass = "p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
 const listItemClass = "flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all";
 
@@ -45,7 +45,7 @@ const AccountManager: React.FC<{
         <div className={cardClass}>
             <div className="flex justify-between items-center mb-6">
                 <h3 className={sectionTitleClass}>Minhas Contas</h3>
-                <button onClick={openAddModal} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-md shadow-violet-500/20 transition-all"><PlusIcon className="w-4 h-4"/> Nova Conta</button>
+                <button onClick={openAddModal} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-md shadow-violet-500/20 transition-all"><PlusIcon className="w-4 h-4"/> Nova <span className="hidden sm:inline">Conta</span></button>
             </div>
             <ul className="space-y-3">
                 {accounts.map(acc => (
@@ -136,8 +136,8 @@ const CategoryManager: React.FC<{
     return (
         <div className={cardClass}>
             <div className="flex justify-between items-center mb-6">
-                <h3 className={sectionTitleClass}>Categorias de Transação</h3>
-                <button onClick={() => { setEditingCategory(null); setIsCatModalOpen(true); }} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-md shadow-violet-500/20 transition-all"><PlusIcon className="w-4 h-4"/> Nova Categoria</button>
+                <h3 className={sectionTitleClass}>Categorias</h3>
+                <button onClick={() => { setEditingCategory(null); setIsCatModalOpen(true); }} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2 px-4 rounded-xl shadow-md shadow-violet-500/20 transition-all"><PlusIcon className="w-4 h-4"/> <span className="hidden sm:inline">Nova Categoria</span><span className="sm:hidden">Nova</span></button>
             </div>
             <div className="space-y-4">
                 {categories.map(cat => (
@@ -356,24 +356,26 @@ export const SettingsView: React.FC<any> = (props) => {
     ];
 
     return (
-        <div className="p-6 md:p-10 max-w-5xl mx-auto">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Configurações</h1>
-            <p className="text-slate-500 dark:text-slate-400 mb-8">Gerencie suas preferências e dados do sistema.</p>
+        <div className="p-4 md:p-10 max-w-5xl mx-auto">
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Configurações</h1>
+            <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mb-6 md:mb-8">Gerencie suas preferências e dados do sistema.</p>
             
-            <div className="flex gap-1 bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl w-fit mb-8">
-                {tabs.map(tab => (
-                    <button 
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)} 
-                        className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                            activeTab === tab.id 
-                            ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' 
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
+            <div className="overflow-x-auto pb-2 mb-6 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
+                <div className="flex gap-1 bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl w-max">
+                    {tabs.map(tab => (
+                        <button 
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)} 
+                            className={`px-4 md:px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+                                activeTab === tab.id 
+                                ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' 
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
             </div>
             
             <div className="transition-all duration-300 ease-in-out">

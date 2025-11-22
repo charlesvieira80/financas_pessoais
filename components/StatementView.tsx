@@ -110,20 +110,20 @@ const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, c
     }, [selectedAccountId, currentDate, transactions, accounts]);
 
     return (
-        <div className="p-4 md:p-8 text-gray-800 dark:text-white">
+        <div className="p-4 md:p-8 text-gray-800 dark:text-white max-w-7xl mx-auto">
             <header className="flex flex-col md:flex-row justify-between md:items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Extratos Bancários</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-slate-100">Extratos Bancários</h1>
             </header>
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-white dark:bg-slate-800 rounded-lg items-center">
+            <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-white dark:bg-slate-800 rounded-2xl items-center shadow-sm border border-slate-100 dark:border-slate-700">
                 <div className="w-full md:w-1/3">
-                    <label htmlFor="account-select" className="block text-sm font-medium text-gray-600 dark:text-slate-300 mb-1">Conta</label>
+                    <label htmlFor="account-select" className="block text-xs font-bold uppercase text-gray-500 dark:text-slate-400 mb-1 tracking-wider">Conta</label>
                     <select
                         id="account-select"
                         value={selectedAccountId}
                         onChange={(e) => setSelectedAccountId(e.target.value)}
-                        className="w-full bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-md py-2 px-3 border border-gray-300 dark:border-slate-600 focus:ring-sky-500 focus:border-sky-500"
+                        className="w-full bg-gray-50 dark:bg-slate-700/50 text-gray-900 dark:text-white rounded-xl py-2.5 px-3 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-violet-500 outline-none transition-all"
                         aria-label="Selecionar conta"
                     >
                         {accounts.length > 0 ? (
@@ -133,19 +133,19 @@ const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, c
                         )}
                     </select>
                 </div>
-                <div className="flex-grow flex justify-center items-center gap-2">
-                    <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors" aria-label="Mês anterior">
+                <div className="w-full md:flex-grow flex justify-center items-center gap-3 md:gap-4 pt-2 md:pt-5">
+                    <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-slate-500" aria-label="Mês anterior">
                         <ChevronLeftIcon />
                     </button>
-                    <h2 className="text-xl font-semibold w-48 text-center">{formatMonthYear(currentDate)}</h2>
-                    <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors" aria-label="Próximo mês">
+                    <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white w-40 text-center">{formatMonthYear(currentDate)}</h2>
+                    <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-slate-500" aria-label="Próximo mês">
                         <ChevronRightIcon />
                     </button>
                 </div>
             </div>
 
             {/* Statement Display */}
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden">
                 {!selectedAccountId ? (
                     <p className="p-8 text-center text-gray-500 dark:text-slate-400">Por favor, selecione uma conta para ver o extrato.</p>
                 ) : !statementData ? (
@@ -153,51 +153,56 @@ const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, c
                 ) : (
                     <div>
                         {/* Summary Header */}
-                        <div className="p-4 border-b border-gray-200 dark:border-slate-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-slate-400">Saldo Inicial</p>
-                                <p className="text-lg font-semibold">{formatCurrency(statementData.initialBalance)}</p>
+                        <div className="p-4 md:p-6 border-b border-slate-100 dark:border-slate-700 grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 text-center">
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30">
+                                <p className="text-xs uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Saldo Inicial</p>
+                                <p className="text-base md:text-lg font-bold text-slate-700 dark:text-slate-200">{formatCurrency(statementData.initialBalance)}</p>
                             </div>
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-slate-400">Total de Entradas</p>
-                                <p className="text-lg font-semibold text-emerald-500">{formatCurrency(statementData.totalIncome)}</p>
+                            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10">
+                                <p className="text-xs uppercase font-bold text-emerald-600/70 dark:text-emerald-400/70 mb-1">Entradas</p>
+                                <p className="text-base md:text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(statementData.totalIncome)}</p>
                             </div>
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-slate-400">Total de Saídas</p>
-                                <p className="text-lg font-semibold text-rose-500">{formatCurrency(statementData.totalExpense)}</p>
+                            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/10">
+                                <p className="text-xs uppercase font-bold text-rose-600/70 dark:text-rose-400/70 mb-1">Saídas</p>
+                                <p className="text-base md:text-lg font-bold text-rose-600 dark:text-rose-400">{formatCurrency(statementData.totalExpense)}</p>
                             </div>
-                            <div>
-                                <p className="text-sm text-gray-500 dark:text-slate-400">Saldo Final</p>
-                                <p className="text-lg font-semibold">{formatCurrency(statementData.finalBalance)}</p>
+                            <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-700/50">
+                                <p className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400 mb-1">Saldo Final</p>
+                                <p className="text-base md:text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(statementData.finalBalance)}</p>
                             </div>
                         </div>
 
                         {/* Transactions List */}
                         <div className="p-4 md:p-6">
                             {statementData.dailyGroups.length === 0 ? (
-                                <p className="py-8 text-center text-gray-500 dark:text-slate-400">Nenhuma transação encontrada para este mês.</p>
+                                <p className="py-12 text-center text-slate-400 dark:text-slate-500 flex flex-col items-center">
+                                    <span className="text-4xl mb-2">📅</span>
+                                    Nenhuma transação encontrada para este mês.
+                                </p>
                             ) : (
                                 <div className="space-y-6">
                                     {statementData.dailyGroups.map(group => (
                                         <div key={group.date}>
-                                            <div className="flex justify-between items-baseline pb-2 border-b border-gray-300 dark:border-slate-600 mb-2">
-                                                <h3 className="font-bold text-lg">{formatDate(group.date)}</h3>
+                                            <div className="flex justify-between items-baseline pb-2 border-b border-slate-200 dark:border-slate-700 mb-2">
+                                                <h3 className="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200 capitalize">
+                                                    {new Date(group.date).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                </h3>
                                                 <div className="text-right">
-                                                    <span className="text-sm text-gray-500 dark:text-slate-400">Saldo do Dia: </span>
-                                                    <span className="font-semibold">{formatCurrency(group.closingBalance)}</span>
+                                                    <span className="text-xs text-slate-400 dark:text-slate-500 mr-2 hidden sm:inline">Saldo do Dia: </span>
+                                                    <span className="font-mono font-semibold text-sm text-slate-600 dark:text-slate-300">{formatCurrency(group.closingBalance)}</span>
                                                 </div>
                                             </div>
-                                            <ul className="space-y-2">
+                                            <ul className="space-y-0">
                                                 {group.transactions.map(t => {
                                                     const category = t.categoryId ? categories.find(c => c.id === t.categoryId) : null;
                                                     const isIncome = t.type === TransactionType.INCOME;
                                                     return (
-                                                        <li key={t.id} className="flex justify-between items-center p-2 rounded hover:bg-gray-100 dark:hover:bg-slate-700/50">
-                                                            <div>
-                                                                <p>{t.description}</p>
-                                                                <p className="text-xs text-gray-500 dark:text-slate-400">{category?.name || (t.transferId ? 'Transferência' : 'Sem Categoria')}</p>
+                                                        <li key={t.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0">
+                                                            <div className="flex flex-col">
+                                                                <p className="font-medium text-sm md:text-base text-slate-900 dark:text-slate-100">{t.description}</p>
+                                                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{category?.name || (t.transferId ? 'Transferência' : 'Sem Categoria')}</p>
                                                             </div>
-                                                            <p className={`font-medium ${isIncome ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                            <p className={`font-bold text-sm md:text-base whitespace-nowrap ml-4 ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                                                 {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
                                                             </p>
                                                         </li>

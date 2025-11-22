@@ -46,23 +46,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         });
     };
     
-    const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setCurrentDate(prev => {
-            const newDate = new Date(prev);
-            newDate.setFullYear(parseInt(e.target.value, 10));
-            return newDate;
-        });
-    };
-    
-    const availableYears = useMemo(() => {
-        const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
-        const currentYear = new Date().getFullYear();
-        if (!years.has(currentYear)) {
-            years.add(currentYear);
-        }
-        return Array.from(years).sort((a, b) => Number(b) - Number(a));
-    }, [transactions]);
-
     const filteredTransactionsByDate = useMemo(() => {
         return transactions.filter(t => {
             const tDate = new Date(t.date);
@@ -207,22 +190,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         : `Gastos por Categoria`;
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-6 md:space-y-8">
+            <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Financeiro</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Visão geral do seu patrimônio e movimentações.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Financeiro</h1>
+                    <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Visão geral do seu patrimônio e movimentações.</p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
-                        <button onClick={() => setViewMode('monthly')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'monthly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Mensal</button>
-                        <button onClick={() => setViewMode('yearly')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'yearly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Anual</button>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white dark:bg-slate-900 p-2 md:p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 w-full lg:w-auto">
+                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-full sm:w-auto">
+                        <button onClick={() => setViewMode('monthly')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'monthly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Mensal</button>
+                        <button onClick={() => setViewMode('yearly')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'yearly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Anual</button>
                     </div>
 
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-1"></div>
+                    <div className="h-px w-full sm:h-6 sm:w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-1"></div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
                         {viewMode === 'monthly' ? (
                             <>
                                 <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
@@ -241,28 +224,28 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
             </header>
             
             {/* Total Balance Card */}
-            <div className="relative overflow-hidden bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group">
-                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
-                <h2 className="relative text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Acumulado</h2>
-                <div className="relative flex items-baseline gap-2">
-                    <span className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
+            <div className="relative overflow-hidden bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group">
+                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 md:w-32 md:h-32 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
+                <h2 className="relative text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Acumulado</h2>
+                <div className="relative flex items-baseline gap-2 flex-wrap">
+                    <span className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 break-all">
                         {formatCurrency(totalBalance)}
                     </span>
                 </div>
-                <p className="relative mt-2 text-sm font-medium text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <p className="relative mt-3 text-xs md:text-sm font-medium text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     Atualizado em {endOfPeriodFormatted}
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                 {/* Area Chart */}
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
+                <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
                     <div className="mb-6">
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Fluxo de Caixa</h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Entradas vs Saídas em {currentPeriodLabel}</p>
                     </div>
-                    <div className="h-80 w-full">
+                    <div className="h-64 md:h-80 w-full -ml-2 md:ml-0">
                          <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={viewMode === 'monthly' ? dailyData : monthlyData}>
                                 <defs>
@@ -279,7 +262,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                 <XAxis 
                                     dataKey={viewMode === 'monthly' ? "date" : "month"} 
                                     stroke={textColor} 
-                                    tick={{fontSize: 12}}
+                                    tick={{fontSize: 11}}
                                     tickLine={false}
                                     axisLine={false}
                                     tickMargin={10}
@@ -288,17 +271,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                 <YAxis 
                                     stroke={textColor} 
                                     allowDecimals={false} 
-                                    tick={{fontSize: 12}}
+                                    tick={{fontSize: 11}}
                                     tickLine={false}
                                     axisLine={false}
-                                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} 
+                                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                                    width={40}
                                 />
                                 <Tooltip 
                                     contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} 
                                     formatter={(value) => formatCurrency(value as number)}
                                     labelStyle={{ color: textColor, fontWeight: 'bold', marginBottom: '4px' }}
                                 />
-                                <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+                                <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
                                 <Area type="monotone" dataKey="receita" name="Receitas" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" activeDot={{ r: 6, strokeWidth: 0 }} />
                                 <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" activeDot={{ r: 6, strokeWidth: 0 }} />
                             </AreaChart>
@@ -307,19 +291,19 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                 </div>
 
                 {/* Pie Chart */}
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
-                    <div className="flex justify-between items-start mb-6">
+                <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-2">
                         <div>
                             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{pieChartTitle}</h2>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Distribuição de despesas</p>
                         </div>
                         {selectedCategoryId && (
-                            <button onClick={() => setSelectedCategoryId(null)} className="text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-3 py-1 rounded-full hover:bg-violet-100 transition-colors">
+                            <button onClick={() => setSelectedCategoryId(null)} className="text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-3 py-1 rounded-full hover:bg-violet-100 transition-colors self-start">
                                 &larr; Voltar
                             </button>
                         )}
                     </div>
-                     <div className="h-80 w-full relative">
+                     <div className="h-64 md:h-80 w-full relative">
                         {pieChartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -328,7 +312,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={60}
-                                        outerRadius={100}
+                                        outerRadius={80}
                                         paddingAngle={5}
                                         dataKey="value"
                                         nameKey="name"
@@ -350,7 +334,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                         verticalAlign="middle" 
                                         align="right"
                                         iconType="circle"
-                                        wrapperStyle={{ color: textColor, fontSize: '12px' }}
+                                        wrapperStyle={{ color: textColor, fontSize: '11px', maxWidth: '100px' }}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -369,23 +353,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
             {/* AI Insights Section */}
             <div className="relative bg-gradient-to-br from-slate-900 to-violet-900 dark:from-slate-800 dark:to-violet-950 p-1 rounded-3xl shadow-xl">
                 <div className="bg-white/5 dark:bg-slate-900/50 backdrop-blur-sm p-6 md:p-8 rounded-[20px] text-white h-full">
-                    <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
+                    <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg shadow-lg shadow-orange-500/20">
                                 <SparklesIcon className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold">Assistente Financeiro Inteligente</h2>
-                                <p className="text-slate-300 text-sm">Análise baseada em IA dos seus hábitos.</p>
+                                <h2 className="text-xl font-bold">Assistente Financeiro</h2>
+                                <p className="text-slate-300 text-sm">Análise inteligente baseada em IA.</p>
                             </div>
                         </div>
                          <button
                             onClick={handleGetInsights}
                             disabled={isLoadingInsights || nonTransferTransactions.length === 0}
-                            className="group relative overflow-hidden bg-white text-violet-900 hover:text-white font-bold py-2.5 px-6 rounded-xl transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full md:w-auto group relative overflow-hidden bg-white text-violet-900 hover:text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <span className="absolute inset-0 w-full h-full bg-violet-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
-                            <span className="relative flex items-center gap-2">
+                            <span className="relative flex items-center justify-center gap-2">
                                 {isLoadingInsights ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-violet-900/30 border-t-violet-900 rounded-full animate-spin"></div>
@@ -403,7 +387,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                     
                     <div className="min-h-[100px] bg-black/20 rounded-xl p-6 backdrop-blur-md border border-white/10">
                         {insights ? (
-                            <div className="prose prose-invert max-w-none prose-p:text-slate-200 prose-headings:text-white prose-strong:text-amber-300">
+                            <div className="prose prose-invert max-w-none prose-p:text-slate-200 prose-headings:text-white prose-strong:text-amber-300 text-sm md:text-base">
                                 {insights.split('\n').map((line, index) => {
                                     if (line.startsWith('* ')) {
                                         return <p key={index} className="flex items-start gap-2 mb-2"><span className="text-amber-400 mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 block flex-shrink-0"></span><span>{line.substring(2)}</span></p>;
@@ -412,7 +396,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                 })}
                             </div>
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-4">
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-4 text-center">
                                 {isLoadingInsights ? (
                                     <p className="animate-pulse">A IA está analisando suas finanças...</p>
                                 ) : nonTransferTransactions.length === 0 && filteredTransactionsByDate.length > 0 ? (
