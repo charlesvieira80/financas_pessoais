@@ -27,6 +27,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Monitorar estado de autenticação do Firebase
   useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
             // Extrair nome do displayName (geralmente guardamos "Nome Sobrenome")
@@ -49,6 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    if (!auth) return { success: false, message: 'Serviço de autenticação não configurado. Verifique as chaves do Firebase.' };
     try {
         await signInWithEmailAndPassword(auth, email, pass);
         return { success: true, message: 'Login realizado com sucesso.' };
@@ -62,6 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const register = async (firstName: string, lastName: string, email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+      if (!auth) return { success: false, message: 'Serviço de autenticação não configurado.' };
       try {
           const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
           
@@ -88,6 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
+    if (!auth) return;
     try {
         await signOut(auth);
     } catch (error) {
@@ -96,9 +104,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   const changePassword = async (currentPass: string, newPass: string): Promise<{ success: boolean; message: string; }> => {
-    // Nota: O Firebase Auth exige re-autenticação para trocar senha em operações sensíveis,
-    // ou o uso de sendPasswordResetEmail. Para manter simples aqui, retornamos um aviso.
-    // Uma implementação completa exigiria a função updatePassword(user, newPass).
+    if (!auth) return { success: false, message: 'Serviço indisponível.' };
+    // Nota: O Firebase Auth exige re-autenticação para trocar senha em operações sensíveis.
     return { success: false, message: 'Para alterar a senha, utilize a função "Esqueci minha senha" na tela de login.' };
   };
 

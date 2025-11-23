@@ -11,14 +11,14 @@ import Login from './components/Login';
 import { useTheme } from './contexts/ThemeContext';
 // Firebase Imports
 import { db } from './services/firebase';
-import { 
-    collection, 
-    query, 
-    where, 
-    onSnapshot, 
-    addDoc, 
-    updateDoc, 
-    deleteDoc, 
+import {
+    collection,
+    query,
+    where,
+    onSnapshot,
+    addDoc,
+    updateDoc,
+    deleteDoc,
     doc,
     writeBatch
 } from 'firebase/firestore';
@@ -39,7 +39,7 @@ const App: React.FC = () => {
 
     // --- Sincronização em Tempo Real (Realtime Listeners) ---
     useEffect(() => {
-        if (!user) {
+        if (!user || !db) {
             setAccounts([]);
             setCategories([]);
             setSubcategories([]);
@@ -49,87 +49,97 @@ const App: React.FC = () => {
 
         setLoadingData(true);
 
-        // Queries filtrando pelo ID do usuário logado
-        const accountsQuery = query(collection(db, 'accounts'), where('userId', '==', user.id));
-        const categoriesQuery = query(collection(db, 'categories'), where('userId', '==', user.id));
-        const subcategoriesQuery = query(collection(db, 'subcategories'), where('userId', '==', user.id));
-        const transactionsQuery = query(collection(db, 'transactions'), where('userId', '==', user.id));
+        try {
+            // Queries filtrando pelo ID do usuário logado
+            const accountsQuery = query(collection(db, 'accounts'), where('userId', '==', user.id));
+            const categoriesQuery = query(collection(db, 'categories'), where('userId', '==', user.id));
+            const subcategoriesQuery = query(collection(db, 'subcategories'), where('userId', '==', user.id));
+            const transactionsQuery = query(collection(db, 'transactions'), where('userId', '==', user.id));
 
-        // Listeners
-        const unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
-            setAccounts(data);
-            
-            // Seed inicial se conta estiver vazia (opcional)
-            if (data.length === 0 && !localStorage.getItem(`seeded_${user.id}`)) {
-                seedInitialData(user.id);
-            }
-        });
+            // Listeners
+            const unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+                setAccounts(data);
+                
+                // Seed inicial se conta estiver vazia (opcional)
+                if (data.length === 0 && !localStorage.getItem(`seeded_${user.id}`)) {
+                    seedInitialData(user.id);
+                }
+            });
 
-        const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-            setCategories(data);
-        });
+            const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+                setCategories(data);
+            });
 
-        const unsubscribeSubcategories = onSnapshot(subcategoriesQuery, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Subcategory));
-            setSubcategories(data);
-        });
+            const unsubscribeSubcategories = onSnapshot(subcategoriesQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Subcategory));
+                setSubcategories(data);
+            });
 
-        const unsubscribeTransactions = onSnapshot(transactionsQuery, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-            setTransactions(data);
+            const unsubscribeTransactions = onSnapshot(transactionsQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+                setTransactions(data);
+                setLoadingData(false);
+            });
+
+            return () => {
+                unsubscribeAccounts();
+                unsubscribeCategories();
+                unsubscribeSubcategories();
+                unsubscribeTransactions();
+            };
+        } catch (error) {
+            console.error("Erro ao configurar listeners do Firestore:", error);
             setLoadingData(false);
-        });
-
-        return () => {
-            unsubscribeAccounts();
-            unsubscribeCategories();
-            unsubscribeSubcategories();
-            unsubscribeTransactions();
-        };
+        }
     }, [user]);
 
     // Função para criar dados iniciais no Firestore
     const seedInitialData = async (userId: string) => {
-        localStorage.setItem(`seeded_${userId}`, 'true');
-        const batch = writeBatch(db);
+        if (!db) return;
+        try {
+            localStorage.setItem(`seeded_${userId}`, 'true');
+            const batch = writeBatch(db);
 
-        const initialAccounts = [
-            { name: 'Conta Corrente', initialBalance: 0, userId },
-            { name: 'Carteira', initialBalance: 0, userId },
-        ];
-        initialAccounts.forEach(acc => {
-            const ref = doc(collection(db, "accounts"));
-            batch.set(ref, acc);
-        });
+            const initialAccounts = [
+                { name: 'Conta Corrente', initialBalance: 0, userId },
+                { name: 'Carteira', initialBalance: 0, userId },
+            ];
+            initialAccounts.forEach(acc => {
+                const ref = doc(collection(db!, "accounts"));
+                batch.set(ref, acc);
+            });
 
-        const initialCategories = [
-            { name: 'Salário', type: TransactionType.INCOME, userId },
-            { name: 'Alimentação', type: TransactionType.EXPENSE, userId },
-            { name: 'Moradia', type: TransactionType.EXPENSE, userId },
-            { name: 'Transporte', type: TransactionType.EXPENSE, userId },
-            { name: 'Lazer', type: TransactionType.EXPENSE, userId },
-        ];
-        initialCategories.forEach(cat => {
-            const ref = doc(collection(db, "categories"));
-            batch.set(ref, cat);
-        });
+            const initialCategories = [
+                { name: 'Salário', type: TransactionType.INCOME, userId },
+                { name: 'Alimentação', type: TransactionType.EXPENSE, userId },
+                { name: 'Moradia', type: TransactionType.EXPENSE, userId },
+                { name: 'Transporte', type: TransactionType.EXPENSE, userId },
+                { name: 'Lazer', type: TransactionType.EXPENSE, userId },
+            ];
+            initialCategories.forEach(cat => {
+                const ref = doc(collection(db!, "categories"));
+                batch.set(ref, cat);
+            });
 
-        await batch.commit();
+            await batch.commit();
+        } catch (error) {
+            console.error("Erro ao semear dados:", error);
+        }
     };
 
     // --- Operações de Escrita (CRUD) ---
 
     // Generic Add
     const addToFirestore = async (collectionName: string, data: any) => {
-        if (!user) return;
+        if (!user || !db) return;
         await addDoc(collection(db, collectionName), { ...data, userId: user.id });
     };
 
     // Generic Update
     const updateInFirestore = async (collectionName: string, data: any) => {
-        if (!user) return;
+        if (!user || !db) return;
         const { id, ...rest } = data;
         const docRef = doc(db, collectionName, id);
         await updateDoc(docRef, rest);
@@ -137,13 +147,13 @@ const App: React.FC = () => {
 
     // Generic Delete
     const deleteFromFirestore = async (collectionName: string, id: string) => {
-        if (!user) return;
+        if (!user || !db) return;
         await deleteDoc(doc(db, collectionName, id));
     };
 
 
     // Wrappers para manter compatibilidade com componentes filhos
-    const addAccount = (account: Omit<Account, 'id'>) => { addToFirestore('accounts', account); return {} as Account; }; // Return mock to satisfy TS signature if needed immediately, but state updates via listener
+    const addAccount = (account: Omit<Account, 'id'>) => { addToFirestore('accounts', account); return {} as Account; }; 
     const updateAccount = (account: Account) => updateInFirestore('accounts', account);
     const deleteAccount = (id: string) => deleteFromFirestore('accounts', id);
 
@@ -151,7 +161,6 @@ const App: React.FC = () => {
     const updateCategory = (category: Category) => updateInFirestore('categories', category);
     const deleteCategory = (id: string) => {
         deleteFromFirestore('categories', id);
-        // Opcional: deletar subcategorias órfãs via batch no backend ou aqui
     };
 
     const addSubcategory = (subcategory: Omit<Subcategory, 'id'>) => { addToFirestore('subcategories', subcategory); return {} as Subcategory; };
