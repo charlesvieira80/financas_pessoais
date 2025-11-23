@@ -1,7 +1,14 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { hashPassword } from '../services/cryptoService';
 import { UserProfile } from '../types';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged, 
+    updateProfile,
+    User
+} from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -14,120 +21,90 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Keys for our "Simulated Database" in localStorage
-const DB_USERS_KEY = 'finance_db_users'; 
-const SESSION_KEY = 'finance_session_user';
-
-interface StoredUser extends UserProfile {
-    passwordHash: string;
-}
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize session from storage
+  // Monitorar estado de autenticação do Firebase
   useEffect(() => {
-    const sessionEmail = localStorage.getItem(SESSION_KEY);
-    if (sessionEmail) {
-        const usersStr = localStorage.getItem(DB_USERS_KEY);
-        if (usersStr) {
-            const users: StoredUser[] = JSON.parse(usersStr);
-            const foundUser = users.find(u => u.email === sessionEmail);
-            if (foundUser) {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { passwordHash, ...profile } = foundUser;
-                setUser(profile);
-            }
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+            // Extrair nome do displayName (geralmente guardamos "Nome Sobrenome")
+            const [firstName, ...rest] = (firebaseUser.displayName || '').split(' ');
+            const lastName = rest.join(' ');
+
+            setUser({
+                id: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                firstName: firstName || 'Usuário',
+                lastName: lastName || ''
+            });
+        } else {
+            setUser(null);
         }
-    }
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const getUsers = (): StoredUser[] => {
-      const usersStr = localStorage.getItem(DB_USERS_KEY);
-      return usersStr ? JSON.parse(usersStr) : [];
-  };
-
   const login = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
-    const users = getUsers();
-    const normalizedEmail = email.toLowerCase().trim();
-    const foundUser = users.find(u => u.email === normalizedEmail);
-
-    if (!foundUser) {
-        // Fallback for legacy admin user if it exists in the old format, purely for migration
-        // But for this request, we strictly enforce the new system.
-        return { success: false, message: 'Usuário não encontrado.' };
-    }
-
-    const inputHash = await hashPassword(pass);
-    if (foundUser.passwordHash === inputHash) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { passwordHash, ...profile } = foundUser;
-        setUser(profile);
-        localStorage.setItem(SESSION_KEY, normalizedEmail);
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
         return { success: true, message: 'Login realizado com sucesso.' };
+    } catch (error: any) {
+        let msg = 'Erro ao realizar login.';
+        if (error.code === 'auth/invalid-credential') msg = 'E-mail ou senha incorretos.';
+        if (error.code === 'auth/user-not-found') msg = 'Usuário não encontrado.';
+        if (error.code === 'auth/wrong-password') msg = 'Senha incorreta.';
+        return { success: false, message: msg };
     }
-
-    return { success: false, message: 'Senha incorreta.' };
   };
 
   const register = async (firstName: string, lastName: string, email: string, pass: string): Promise<{ success: boolean; message: string }> => {
-      const users = getUsers();
-      const normalizedEmail = email.toLowerCase().trim();
+      try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+          
+          // Atualizar o perfil do usuário no Firebase Auth com o nome
+          await updateProfile(userCredential.user, {
+              displayName: `${firstName} ${lastName}`.trim()
+          });
 
-      if (users.some(u => u.email === normalizedEmail)) {
-          return { success: false, message: 'Este e-mail já está cadastrado.' };
+          // Forçar atualização do estado local já que o onAuthStateChanged pode disparar antes do updateProfile
+          setUser({
+              id: userCredential.user.uid,
+              email: email,
+              firstName,
+              lastName
+          });
+
+          return { success: true, message: 'Cadastro realizado com sucesso!' };
+      } catch (error: any) {
+          let msg = 'Erro ao cadastrar.';
+          if (error.code === 'auth/email-already-in-use') msg = 'Este e-mail já está em uso.';
+          if (error.code === 'auth/weak-password') msg = 'A senha é muito fraca.';
+          return { success: false, message: msg };
       }
-
-      const passwordHash = await hashPassword(pass);
-      
-      const newUser: StoredUser = {
-          id: crypto.randomUUID(),
-          firstName,
-          lastName,
-          email: normalizedEmail,
-          passwordHash
-      };
-
-      const updatedUsers = [...users, newUser];
-      localStorage.setItem(DB_USERS_KEY, JSON.stringify(updatedUsers));
-
-      // Auto login after register
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { passwordHash: _, ...profile } = newUser;
-      setUser(profile);
-      localStorage.setItem(SESSION_KEY, normalizedEmail);
-
-      return { success: true, message: 'Cadastro realizado com sucesso!' };
   };
 
-  const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
-    setUser(null);
+  const logout = async () => {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error("Erro ao sair", error);
+    }
   };
   
   const changePassword = async (currentPass: string, newPass: string): Promise<{ success: boolean; message: string; }> => {
-    if (!user) return { success: false, message: 'Usuário não autenticado.' };
-
-    const users = getUsers();
-    const userIndex = users.findIndex(u => u.email === user.email);
-
-    if (userIndex === -1) return { success: false, message: 'Usuário não encontrado no banco de dados.' };
-
-    const currentHash = await hashPassword(currentPass);
-    if (users[userIndex].passwordHash !== currentHash) {
-        return { success: false, message: 'A senha atual está incorreta.' };
-    }
-
-    const newHash = await hashPassword(newPass);
-    users[userIndex].passwordHash = newHash;
-    
-    localStorage.setItem(DB_USERS_KEY, JSON.stringify(users));
-    return { success: true, message: 'Senha alterada com sucesso!' };
+    // Nota: O Firebase Auth exige re-autenticação para trocar senha em operações sensíveis,
+    // ou o uso de sendPasswordResetEmail. Para manter simples aqui, retornamos um aviso.
+    // Uma implementação completa exigiria a função updatePassword(user, newPass).
+    return { success: false, message: 'Para alterar a senha, utilize a função "Esqueci minha senha" na tela de login.' };
   };
 
   return (
     <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, register, logout, changePassword }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

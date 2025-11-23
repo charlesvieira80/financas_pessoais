@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { Account, Category, Subcategory, Transaction, TransactionType } from './types';
 import Dashboard from './components/Dashboard';
 import TransactionsView from './components/TransactionsView';
@@ -11,104 +9,175 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import { useTheme } from './contexts/ThemeContext';
+// Firebase Imports
+import { db } from './services/firebase';
+import { 
+    collection, 
+    query, 
+    where, 
+    onSnapshot, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    doc,
+    writeBatch
+} from 'firebase/firestore';
 
 type ActiveView = 'dashboard' | 'transactions' | 'statement' | 'settings';
-
-// Initial Data Generators
-const getInitialAccounts = (): Account[] => [
-  { id: 'acc1', name: 'Conta Corrente', initialBalance: 0 },
-  { id: 'acc2', name: 'Carteira', initialBalance: 0 },
-];
-
-const getInitialCategories = (): Category[] => [
-  { id: 'cat1', name: 'Salário', type: TransactionType.INCOME },
-  { id: 'cat2', name: 'Alimentação', type: TransactionType.EXPENSE },
-  { id: 'cat3', name: 'Moradia', type: TransactionType.EXPENSE },
-  { id: 'cat4', name: 'Transporte', type: TransactionType.EXPENSE },
-  { id: 'cat5', name: 'Lazer', type: TransactionType.EXPENSE },
-];
-
-const getInitialSubcategories = (): Subcategory[] => [];
-const getInitialTransactions = (): Transaction[] => [];
 
 const App: React.FC = () => {
     const { isAuthenticated, user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
 
-    // Create a dynamic prefix based on the logged-in user to isolate data
-    // If no user is logged in (shouldn't happen in main view), use 'public_'
-    const userPrefix = user ? `user_${user.email.replace(/[^a-zA-Z0-9]/g, '')}_` : 'public_';
+    // Estado local sincronizado com Firebase
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loadingData, setLoadingData] = useState(false);
 
-    const [accounts, setAccounts] = useLocalStorage<Account[]>(`${userPrefix}finance-accounts`, []);
-    const [categories, setCategories] = useLocalStorage<Category[]>(`${userPrefix}finance-categories`, []);
-    const [subcategories, setSubcategories] = useLocalStorage<Subcategory[]>(`${userPrefix}finance-subcategories`, []);
-    const [transactions, setTransactions] = useLocalStorage<Transaction[]>(`${userPrefix}finance-transactions`, []);
-
-    // One-time initialization PER USER
+    // --- Sincronização em Tempo Real (Realtime Listeners) ---
     useEffect(() => {
-        if (isAuthenticated && user) {
-            const initializedKey = `${userPrefix}app-initialized`;
-            const isInitialized = localStorage.getItem(initializedKey);
-
-            if (!isInitialized) {
-                console.log(`Initializing data for user: ${user.email}`);
-                // Only seed if arrays are empty to respect useLocalStorage loading
-                if (accounts.length === 0) setAccounts(getInitialAccounts());
-                if (categories.length === 0) setCategories(getInitialCategories());
-                // No default transactions for new users, start clean
-                
-                localStorage.setItem(initializedKey, 'true');
-            }
+        if (!user) {
+            setAccounts([]);
+            setCategories([]);
+            setSubcategories([]);
+            setTransactions([]);
+            return;
         }
-    }, [isAuthenticated, user, userPrefix]); // removed dependencies on data arrays to avoid reset loops
 
-    const addAccount = (account: Omit<Account, 'id'>): Account => {
-        const newAccount = { ...account, id: crypto.randomUUID() };
-        setAccounts(prev => [...prev, newAccount]);
-        return newAccount;
-    };
-    const updateAccount = (account: Account) => setAccounts(prev => prev.map(a => a.id === account.id ? account : a));
-    const deleteAccount = (id: string) => setAccounts(prev => prev.filter(a => a.id !== id));
+        setLoadingData(true);
 
-    const addCategory = (category: Omit<Category, 'id'>): Category => {
-        const newCategory = { ...category, id: crypto.randomUUID() };
-        setCategories(prev => [...prev, newCategory]);
-        return newCategory;
-    };
-    const updateCategory = (category: Category) => setCategories(prev => prev.map(c => c.id === category.id ? category : c));
-    const deleteCategory = (id: string) => {
-        setCategories(prev => prev.filter(c => c.id !== id));
-        // Also clean up subcategories, but logic in SettingsView now prevents deletion if these exist, 
-        // essentially enforcing manual cleanup or safe deletion.
-        setSubcategories(prev => prev.filter(s => s.categoryId !== id));
-    };
+        // Queries filtrando pelo ID do usuário logado
+        const accountsQuery = query(collection(db, 'accounts'), where('userId', '==', user.id));
+        const categoriesQuery = query(collection(db, 'categories'), where('userId', '==', user.id));
+        const subcategoriesQuery = query(collection(db, 'subcategories'), where('userId', '==', user.id));
+        const transactionsQuery = query(collection(db, 'transactions'), where('userId', '==', user.id));
 
-    const addSubcategory = (subcategory: Omit<Subcategory, 'id'>): Subcategory => {
-        const newSubcategory = { ...subcategory, id: crypto.randomUUID() };
-        setSubcategories(prev => [...prev, newSubcategory]);
-        return newSubcategory;
-    };
-    const updateSubcategory = (subcategory: Subcategory) => setSubcategories(prev => prev.map(s => s.id === subcategory.id ? subcategory : s));
-    const deleteSubcategory = (id: string) => setSubcategories(prev => prev.filter(s => s.id !== id));
-
-    const addTransaction = (transaction: Omit<Transaction, 'id'>) => setTransactions(prev => [...prev, { ...transaction, id: crypto.randomUUID() }]);
-    const updateTransaction = (transaction: Transaction) => setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
-    const deleteTransaction = (id: string) => {
-        setTransactions(prev => {
-            const txToDelete = prev.find(t => t.id === id);
-            if (txToDelete?.transferId) {
-                return prev.filter(t => t.transferId !== txToDelete.transferId);
+        // Listeners
+        const unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+            setAccounts(data);
+            
+            // Seed inicial se conta estiver vazia (opcional)
+            if (data.length === 0 && !localStorage.getItem(`seeded_${user.id}`)) {
+                seedInitialData(user.id);
             }
-            return prev.filter(t => t.id !== id);
         });
+
+        const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+            setCategories(data);
+        });
+
+        const unsubscribeSubcategories = onSnapshot(subcategoriesQuery, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Subcategory));
+            setSubcategories(data);
+        });
+
+        const unsubscribeTransactions = onSnapshot(transactionsQuery, (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+            setTransactions(data);
+            setLoadingData(false);
+        });
+
+        return () => {
+            unsubscribeAccounts();
+            unsubscribeCategories();
+            unsubscribeSubcategories();
+            unsubscribeTransactions();
+        };
+    }, [user]);
+
+    // Função para criar dados iniciais no Firestore
+    const seedInitialData = async (userId: string) => {
+        localStorage.setItem(`seeded_${userId}`, 'true');
+        const batch = writeBatch(db);
+
+        const initialAccounts = [
+            { name: 'Conta Corrente', initialBalance: 0, userId },
+            { name: 'Carteira', initialBalance: 0, userId },
+        ];
+        initialAccounts.forEach(acc => {
+            const ref = doc(collection(db, "accounts"));
+            batch.set(ref, acc);
+        });
+
+        const initialCategories = [
+            { name: 'Salário', type: TransactionType.INCOME, userId },
+            { name: 'Alimentação', type: TransactionType.EXPENSE, userId },
+            { name: 'Moradia', type: TransactionType.EXPENSE, userId },
+            { name: 'Transporte', type: TransactionType.EXPENSE, userId },
+            { name: 'Lazer', type: TransactionType.EXPENSE, userId },
+        ];
+        initialCategories.forEach(cat => {
+            const ref = doc(collection(db, "categories"));
+            batch.set(ref, cat);
+        });
+
+        await batch.commit();
+    };
+
+    // --- Operações de Escrita (CRUD) ---
+
+    // Generic Add
+    const addToFirestore = async (collectionName: string, data: any) => {
+        if (!user) return;
+        await addDoc(collection(db, collectionName), { ...data, userId: user.id });
+    };
+
+    // Generic Update
+    const updateInFirestore = async (collectionName: string, data: any) => {
+        if (!user) return;
+        const { id, ...rest } = data;
+        const docRef = doc(db, collectionName, id);
+        await updateDoc(docRef, rest);
+    };
+
+    // Generic Delete
+    const deleteFromFirestore = async (collectionName: string, id: string) => {
+        if (!user) return;
+        await deleteDoc(doc(db, collectionName, id));
+    };
+
+
+    // Wrappers para manter compatibilidade com componentes filhos
+    const addAccount = (account: Omit<Account, 'id'>) => { addToFirestore('accounts', account); return {} as Account; }; // Return mock to satisfy TS signature if needed immediately, but state updates via listener
+    const updateAccount = (account: Account) => updateInFirestore('accounts', account);
+    const deleteAccount = (id: string) => deleteFromFirestore('accounts', id);
+
+    const addCategory = (category: Omit<Category, 'id'>) => { addToFirestore('categories', category); return {} as Category; };
+    const updateCategory = (category: Category) => updateInFirestore('categories', category);
+    const deleteCategory = (id: string) => {
+        deleteFromFirestore('categories', id);
+        // Opcional: deletar subcategorias órfãs via batch no backend ou aqui
+    };
+
+    const addSubcategory = (subcategory: Omit<Subcategory, 'id'>) => { addToFirestore('subcategories', subcategory); return {} as Subcategory; };
+    const updateSubcategory = (subcategory: Subcategory) => updateInFirestore('subcategories', subcategory);
+    const deleteSubcategory = (id: string) => deleteFromFirestore('subcategories', id);
+
+    const addTransaction = (transaction: Omit<Transaction, 'id'>) => addToFirestore('transactions', transaction);
+    const updateTransaction = (transaction: Transaction) => updateInFirestore('transactions', transaction);
+    const deleteTransaction = async (id: string) => {
+        const tx = transactions.find(t => t.id === id);
+        if (tx?.transferId) {
+            // Deletar ambas as partes da transferência
+            const related = transactions.filter(t => t.transferId === tx.transferId);
+            for (const t of related) {
+                await deleteFromFirestore('transactions', t.id);
+            }
+        } else {
+            await deleteFromFirestore('transactions', id);
+        }
     };
 
     const settingsProps = {
         accounts, addAccount, updateAccount, deleteAccount,
         categories, addCategory, updateCategory, deleteCategory,
         subcategories, addSubcategory, updateSubcategory, deleteSubcategory,
-        transactions // Pass transactions to enable referential integrity checks
+        transactions
     };
     
     if (!isAuthenticated) {
@@ -116,6 +185,14 @@ const App: React.FC = () => {
     }
 
     const renderView = () => {
+        if (loadingData && accounts.length === 0 && categories.length === 0) {
+            return (
+                <div className="flex items-center justify-center h-full pt-20">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+                </div>
+            );
+        }
+
         switch (activeView) {
             case 'dashboard':
                 return <Dashboard transactions={transactions} categories={categories} accounts={accounts} subcategories={subcategories} />;
@@ -165,7 +242,7 @@ const App: React.FC = () => {
             <aside className="w-72 bg-white dark:bg-slate-900 p-6 border-r border-slate-200 dark:border-slate-800 hidden md:flex md:flex-col fixed h-full z-20 shadow-xl shadow-slate-200/50 dark:shadow-none">
                 <div className="flex items-center gap-3 mb-8 px-2">
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg text-white shadow-lg shadow-violet-500/30">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                     </div>
                     <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Minhas <span className="text-violet-600">Finanças</span></span>
                 </div>
