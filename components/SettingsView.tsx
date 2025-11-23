@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
-import { Account, Category, Subcategory, TransactionType } from '../types';
+import { Account, Category, Subcategory, Transaction, TransactionType } from '../types';
 import Modal from './shared/Modal';
-import { PencilIcon, PlusIcon, TrashIcon } from './shared/icons';
+import { PencilIcon, PlusIcon, TrashIcon, XIcon } from './shared/icons';
 import { formatCurrency, translateTransactionType } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,15 +12,56 @@ const cardClass = "bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 shadow-sm b
 const btnIconClass = "p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
 const listItemClass = "flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all";
 
+interface AlertModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    message: string;
+    type: 'error' | 'confirm';
+    onConfirm?: () => void;
+}
+
+const AlertModal: React.FC<AlertModalProps> = ({ isOpen, onClose, title, message, type, onConfirm }) => {
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={title}>
+            <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-300">{message}</p>
+                <div className="flex justify-end gap-3 pt-2">
+                    <button 
+                        onClick={onClose} 
+                        className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium"
+                    >
+                        {type === 'confirm' ? 'Cancelar' : 'Fechar'}
+                    </button>
+                    {type === 'confirm' && onConfirm && (
+                         <button 
+                            onClick={() => { onConfirm(); onClose(); }} 
+                            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-lg shadow-rose-500/20 transition-all"
+                        >
+                            Confirmar Exclusão
+                        </button>
+                    )}
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // Account Management Component
 const AccountManager: React.FC<{
     accounts: Account[],
+    transactions: Transaction[],
     addAccount: (acc: Omit<Account, 'id'>) => void,
     updateAccount: (acc: Account) => void,
     deleteAccount: (id: string) => void
-}> = ({ accounts, addAccount, updateAccount, deleteAccount }) => {
+}> = ({ accounts, transactions, addAccount, updateAccount, deleteAccount }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+    
+    // Alert/Confirm State
+    const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'error' | 'confirm', onConfirm?: () => void}>({
+        isOpen: false, title: '', message: '', type: 'error'
+    });
 
     const handleSave = (accountData: Omit<Account, 'id'> | Account) => {
         if ('id' in accountData) {
@@ -29,6 +71,26 @@ const AccountManager: React.FC<{
         }
         setIsModalOpen(false);
         setEditingAccount(null);
+    };
+
+    const handleDeleteRequest = (account: Account) => {
+        const hasTransactions = transactions.some(t => t.accountId === account.id);
+        if (hasTransactions) {
+            setAlertConfig({
+                isOpen: true,
+                title: 'Não é possível excluir',
+                message: `A conta "${account.name}" possui transações registradas. Remova as transações vinculadas antes de excluir a conta.`,
+                type: 'error'
+            });
+        } else {
+             setAlertConfig({
+                isOpen: true,
+                title: 'Excluir Conta',
+                message: `Tem certeza que deseja excluir a conta "${account.name}"? Esta ação não pode ser desfeita.`,
+                type: 'confirm',
+                onConfirm: () => deleteAccount(account.id)
+            });
+        }
     };
 
     const openAddModal = () => {
@@ -56,7 +118,7 @@ const AccountManager: React.FC<{
                         </div>
                         <div className="flex gap-1">
                             <button onClick={() => openEditModal(acc)} className={`${btnIconClass} hover:text-violet-600`}><PencilIcon className="w-4 h-4" /></button>
-                            <button onClick={() => deleteAccount(acc.id)} className={`${btnIconClass} hover:text-rose-600`}><TrashIcon className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteRequest(acc)} className={`${btnIconClass} hover:text-rose-600`}><TrashIcon className="w-4 h-4" /></button>
                         </div>
                     </li>
                 ))}
@@ -64,6 +126,15 @@ const AccountManager: React.FC<{
              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingAccount ? "Editar Conta" : "Criar Conta"}>
                 <AccountForm account={editingAccount} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
             </Modal>
+            
+            <AlertModal 
+                isOpen={alertConfig.isOpen} 
+                onClose={() => setAlertConfig(prev => ({...prev, isOpen: false}))}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                onConfirm={alertConfig.onConfirm}
+            />
         </div>
     );
 };
@@ -107,6 +178,7 @@ const AccountForm: React.FC<{
 const CategoryManager: React.FC<{
     categories: Category[];
     subcategories: Subcategory[];
+    transactions: Transaction[];
     addCategory: (cat: Omit<Category, 'id'>) => void;
     updateCategory: (cat: Category) => void;
     deleteCategory: (id: string) => void;
@@ -114,12 +186,17 @@ const CategoryManager: React.FC<{
     updateSubcategory: (subcat: Subcategory) => void;
     deleteSubcategory: (id: string) => void;
 }> = (props) => {
-    const { categories, subcategories } = props;
+    const { categories, subcategories, transactions } = props;
     const [isCatModalOpen, setIsCatModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [isSubcatModalOpen, setIsSubcatModalOpen] = useState(false);
     const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
     const [parentCategoryId, setParentCategoryId] = useState<string>('');
+
+    // Alert/Confirm State
+    const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'error' | 'confirm', onConfirm?: () => void}>({
+        isOpen: false, title: '', message: '', type: 'error'
+    });
     
     const handleSaveCategory = (catData: Omit<Category, 'id'> | Category) => {
         if ('id' in catData) props.updateCategory(catData);
@@ -132,6 +209,56 @@ const CategoryManager: React.FC<{
         else props.addSubcategory(subcatData);
         setIsSubcatModalOpen(false);
     };
+
+    const handleDeleteCategoryRequest = (category: Category) => {
+        const hasTransactions = transactions.some(t => t.categoryId === category.id);
+        const hasSubcategories = subcategories.some(s => s.categoryId === category.id);
+
+        if (hasTransactions) {
+            setAlertConfig({
+                isOpen: true,
+                title: 'Não é possível excluir',
+                message: `A categoria "${category.name}" possui transações vinculadas.`,
+                type: 'error'
+            });
+        } else if (hasSubcategories) {
+            setAlertConfig({
+                isOpen: true,
+                title: 'Não é possível excluir',
+                message: `A categoria "${category.name}" possui subcategorias. Exclua as subcategorias primeiro.`,
+                type: 'error'
+            });
+        } else {
+             setAlertConfig({
+                isOpen: true,
+                title: 'Excluir Categoria',
+                message: `Tem certeza que deseja excluir a categoria "${category.name}"?`,
+                type: 'confirm',
+                onConfirm: () => props.deleteCategory(category.id)
+            });
+        }
+    };
+
+    const handleDeleteSubcategoryRequest = (subcategory: Subcategory) => {
+        const hasTransactions = transactions.some(t => t.subcategoryId === subcategory.id);
+
+        if (hasTransactions) {
+             setAlertConfig({
+                isOpen: true,
+                title: 'Não é possível excluir',
+                message: `A subcategoria "${subcategory.name}" possui transações vinculadas.`,
+                type: 'error'
+            });
+        } else {
+            setAlertConfig({
+                isOpen: true,
+                title: 'Excluir Subcategoria',
+                message: `Tem certeza que deseja excluir a subcategoria "${subcategory.name}"?`,
+                type: 'confirm',
+                onConfirm: () => props.deleteSubcategory(subcategory.id)
+            });
+        }
+    }
     
     return (
         <div className={cardClass}>
@@ -149,7 +276,7 @@ const CategoryManager: React.FC<{
                            </div>
                             <div className="flex gap-1">
                                 <button onClick={() => { setEditingCategory(cat); setIsCatModalOpen(true); }} className={`${btnIconClass} hover:text-violet-600`}><PencilIcon className="w-4 h-4" /></button>
-                                <button onClick={() => props.deleteCategory(cat.id)} className={`${btnIconClass} hover:text-rose-600`}><TrashIcon className="w-4 h-4" /></button>
+                                <button onClick={() => handleDeleteCategoryRequest(cat)} className={`${btnIconClass} hover:text-rose-600`}><TrashIcon className="w-4 h-4" /></button>
                             </div>
                         </div>
                         
@@ -159,7 +286,7 @@ const CategoryManager: React.FC<{
                                    <span className="text-sm text-slate-600 dark:text-slate-400">{sub.name}</span>
                                     <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button onClick={() => { setEditingSubcategory(sub); setIsSubcatModalOpen(true); }} className="p-1 text-slate-400 hover:text-violet-500"><PencilIcon className="w-3 h-3" /></button>
-                                        <button onClick={() => props.deleteSubcategory(sub.id)} className="p-1 text-slate-400 hover:text-rose-500"><TrashIcon className="w-3 h-3" /></button>
+                                        <button onClick={() => handleDeleteSubcategoryRequest(sub)} className="p-1 text-slate-400 hover:text-rose-500"><TrashIcon className="w-3 h-3" /></button>
                                     </div>
                                </div>
                            ))}
@@ -175,6 +302,15 @@ const CategoryManager: React.FC<{
              <Modal isOpen={isSubcatModalOpen} onClose={() => setIsSubcatModalOpen(false)} title={editingSubcategory ? "Editar Subcategoria" : "Nova Subcategoria"}>
                 <SubcategoryForm subcategory={editingSubcategory} parentCategoryId={parentCategoryId} onSave={handleSaveSubcategory} onClose={() => setIsSubcatModalOpen(false)} />
             </Modal>
+
+            <AlertModal 
+                isOpen={alertConfig.isOpen} 
+                onClose={() => setAlertConfig(prev => ({...prev, isOpen: false}))}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                onConfirm={alertConfig.onConfirm}
+            />
         </div>
     );
 };

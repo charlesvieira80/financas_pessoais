@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Account, Category, Subcategory, Transaction, TransactionType } from './types';
@@ -13,73 +14,54 @@ import { useTheme } from './contexts/ThemeContext';
 
 type ActiveView = 'dashboard' | 'transactions' | 'statement' | 'settings';
 
-// Seed Data moved here to be used by the one-time initialization logic
-const initialAccounts: Account[] = [
-  { id: 'acc1', name: 'Conta Corrente', initialBalance: 1500 },
-  { id: 'acc2', name: 'Poupança', initialBalance: 10000 },
+// Initial Data Generators
+const getInitialAccounts = (): Account[] => [
+  { id: 'acc1', name: 'Conta Corrente', initialBalance: 0 },
+  { id: 'acc2', name: 'Carteira', initialBalance: 0 },
 ];
 
-const initialCategories: Category[] = [
+const getInitialCategories = (): Category[] => [
   { id: 'cat1', name: 'Salário', type: TransactionType.INCOME },
-  { id: 'cat2', name: 'Supermercado', type: TransactionType.EXPENSE },
-  { id: 'cat3', name: 'Contas', type: TransactionType.EXPENSE },
+  { id: 'cat2', name: 'Alimentação', type: TransactionType.EXPENSE },
+  { id: 'cat3', name: 'Moradia', type: TransactionType.EXPENSE },
   { id: 'cat4', name: 'Transporte', type: TransactionType.EXPENSE },
   { id: 'cat5', name: 'Lazer', type: TransactionType.EXPENSE },
 ];
 
-const initialSubcategories: Subcategory[] = [
-    { id: 'sub1', name: 'Bônus', categoryId: 'cat1' },
-    { id: 'sub2', name: 'Mercado', categoryId: 'cat2' },
-    { id: 'sub3', name: 'Feira', categoryId: 'cat2' },
-    { id: 'sub4', name: 'Energia', categoryId: 'cat3' },
-    { id: 'sub5', name: 'Internet', categoryId: 'cat3' },
-    { id: 'sub6', name: 'Combustível', categoryId: 'cat4' },
-    { id: 'sub7', name: 'Transporte Público', categoryId: 'cat4' },
-    { id: 'sub8', name: 'Restaurantes', categoryId: 'cat5' },
-    { id: 'sub9', name: 'Cafeterias', categoryId: 'cat5' },
-];
-
-const initialTransactions: Transaction[] = [
-  { id: 'trn1', accountId: 'acc1', categoryId: 'cat1', subcategoryId: 'sub1', amount: 3000, date: new Date(new Date().setDate(1)).toISOString(), description: 'Salário Mensal', type: TransactionType.INCOME },
-  { id: 'trn2', accountId: 'acc1', categoryId: 'cat2', subcategoryId: 'sub2', amount: 120.50, date: new Date(new Date().setDate(2)).toISOString(), description: 'Compras no supermercado', type: TransactionType.EXPENSE },
-  { id: 'trn3', accountId: 'acc1', categoryId: 'cat3', subcategoryId: 'sub4', amount: 75.00, date: new Date(new Date().setDate(5)).toISOString(), description: 'Conta de luz', type: TransactionType.EXPENSE },
-  { id: 'trn4', accountId: 'acc1', categoryId: 'cat5', subcategoryId: 'sub8', amount: 45.25, date: new Date(new Date().setDate(7)).toISOString(), description: 'Jantar com amigos', type: TransactionType.EXPENSE },
-  { id: 'trn5', accountId: 'acc1', categoryId: 'cat4', subcategoryId: 'sub6', amount: 50.00, date: new Date(new Date().setDate(10)).toISOString(), description: 'Gasolina para o carro', type: TransactionType.EXPENSE },
-];
-
+const getInitialSubcategories = (): Subcategory[] => [];
+const getInitialTransactions = (): Transaction[] => [];
 
 const App: React.FC = () => {
-    const [accounts, setAccounts] = useLocalStorage<Account[]>('finance-accounts', []);
-    const [categories, setCategories] = useLocalStorage<Category[]>('finance-categories', []);
-    const [subcategories, setSubcategories] = useLocalStorage<Subcategory[]>('finance-subcategories', []);
-    const [transactions, setTransactions] = useLocalStorage<Transaction[]>('finance-transactions', []);
-    const [activeView, setActiveView] = useState<ActiveView>('dashboard');
-    const { isAuthenticated, logout } = useAuth();
+    const { isAuthenticated, user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const [activeView, setActiveView] = useState<ActiveView>('dashboard');
 
+    // Create a dynamic prefix based on the logged-in user to isolate data
+    // If no user is logged in (shouldn't happen in main view), use 'public_'
+    const userPrefix = user ? `user_${user.email.replace(/[^a-zA-Z0-9]/g, '')}_` : 'public_';
+
+    const [accounts, setAccounts] = useLocalStorage<Account[]>(`${userPrefix}finance-accounts`, []);
+    const [categories, setCategories] = useLocalStorage<Category[]>(`${userPrefix}finance-categories`, []);
+    const [subcategories, setSubcategories] = useLocalStorage<Subcategory[]>(`${userPrefix}finance-subcategories`, []);
+    const [transactions, setTransactions] = useLocalStorage<Transaction[]>(`${userPrefix}finance-transactions`, []);
+
+    // One-time initialization PER USER
     useEffect(() => {
-        const appInitialized = localStorage.getItem('finance-app-initialized');
-        if (appInitialized) {
-            return;
-        }
+        if (isAuthenticated && user) {
+            const initializedKey = `${userPrefix}app-initialized`;
+            const isInitialized = localStorage.getItem(initializedKey);
 
-        const hasOldData = localStorage.getItem('finance-transactions') || localStorage.getItem('finance-accounts');
-        if (hasOldData) {
-            localStorage.setItem('finance-app-initialized', 'true');
-            return;
+            if (!isInitialized) {
+                console.log(`Initializing data for user: ${user.email}`);
+                // Only seed if arrays are empty to respect useLocalStorage loading
+                if (accounts.length === 0) setAccounts(getInitialAccounts());
+                if (categories.length === 0) setCategories(getInitialCategories());
+                // No default transactions for new users, start clean
+                
+                localStorage.setItem(initializedKey, 'true');
+            }
         }
-
-        console.log("Seeding initial data for new user.");
-        
-        // FIX: Instead of setting localStorage manually and reloading (which breaks previews),
-        // we use the state setters. The useLocalStorage hook will handle the persistence automatically.
-        setAccounts(initialAccounts);
-        setCategories(initialCategories);
-        setSubcategories(initialSubcategories);
-        setTransactions(initialTransactions);
-        
-        localStorage.setItem('finance-app-initialized', 'true');
-    }, []);
+    }, [isAuthenticated, user, userPrefix]); // removed dependencies on data arrays to avoid reset loops
 
     const addAccount = (account: Omit<Account, 'id'>): Account => {
         const newAccount = { ...account, id: crypto.randomUUID() };
@@ -97,8 +79,9 @@ const App: React.FC = () => {
     const updateCategory = (category: Category) => setCategories(prev => prev.map(c => c.id === category.id ? category : c));
     const deleteCategory = (id: string) => {
         setCategories(prev => prev.filter(c => c.id !== id));
+        // Also clean up subcategories, but logic in SettingsView now prevents deletion if these exist, 
+        // essentially enforcing manual cleanup or safe deletion.
         setSubcategories(prev => prev.filter(s => s.categoryId !== id));
-        setTransactions(prev => prev.map(t => t.categoryId === id ? {...t, categoryId: '', subcategoryId: ''} : t));
     };
 
     const addSubcategory = (subcategory: Omit<Subcategory, 'id'>): Subcategory => {
@@ -124,7 +107,8 @@ const App: React.FC = () => {
     const settingsProps = {
         accounts, addAccount, updateAccount, deleteAccount,
         categories, addCategory, updateCategory, deleteCategory,
-        subcategories, addSubcategory, updateSubcategory, deleteSubcategory
+        subcategories, addSubcategory, updateSubcategory, deleteSubcategory,
+        transactions // Pass transactions to enable referential integrity checks
     };
     
     if (!isAuthenticated) {
@@ -179,12 +163,21 @@ const App: React.FC = () => {
         <div className="min-h-screen font-sans text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 selection:bg-violet-200 dark:selection:bg-violet-900">
             {/* Sidebar Desktop */}
             <aside className="w-72 bg-white dark:bg-slate-900 p-6 border-r border-slate-200 dark:border-slate-800 hidden md:flex md:flex-col fixed h-full z-20 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                <div className="flex items-center gap-3 mb-10 px-2">
+                <div className="flex items-center gap-3 mb-8 px-2">
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg text-white shadow-lg shadow-violet-500/30">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                     </div>
                     <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Minhas <span className="text-violet-600">Finanças</span></span>
                 </div>
+
+                <div className="mb-6 px-2">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                        <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-1">Olá,</p>
+                        <p className="font-bold text-slate-800 dark:text-white truncate">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                    </div>
+                </div>
+
                 <nav className="flex-grow">
                     <ul className="space-y-1">
                         <NavItem view="dashboard" label="Painel Geral" icon={<DashboardIcon className="w-5 h-5" />} />
@@ -209,7 +202,7 @@ const App: React.FC = () => {
                 </div>
             </aside>
 
-            {/* Main Content - Added padding-bottom for mobile nav visibility */}
+            {/* Main Content */}
             <main className="md:ml-72 min-h-screen transition-all duration-300 ease-in-out pb-24 md:pb-0">
                  {renderView()}
             </main>

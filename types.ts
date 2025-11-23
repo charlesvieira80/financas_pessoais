@@ -33,3 +33,10 @@ export interface Transaction {
   type: TransactionType;
   transferId?: string;
 }
+
+export interface UserProfile {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+}
