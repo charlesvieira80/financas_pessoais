@@ -59,6 +59,8 @@ const App: React.FC = () => {
             // Listeners
             const unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+                // Ordenar Contas por ordem alfabética
+                data.sort((a, b) => a.name.localeCompare(b.name));
                 setAccounts(data);
                 
                 // Seed inicial se conta estiver vazia (opcional)
@@ -69,11 +71,21 @@ const App: React.FC = () => {
 
             const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+                // Ordenar Categorias: Primeiro Receitas, depois Despesas, depois Alfabético
+                data.sort((a, b) => {
+                    if (a.type === b.type) {
+                        return a.name.localeCompare(b.name);
+                    }
+                    // Income vem antes de Expense
+                    return a.type === TransactionType.INCOME ? -1 : 1;
+                });
                 setCategories(data);
             });
 
             const unsubscribeSubcategories = onSnapshot(subcategoriesQuery, (snapshot) => {
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Subcategory));
+                // Ordenar Subcategorias por ordem alfabética
+                data.sort((a, b) => a.name.localeCompare(b.name));
                 setSubcategories(data);
             });
 
@@ -103,8 +115,8 @@ const App: React.FC = () => {
             const batch = writeBatch(db);
 
             const initialAccounts = [
-                { name: 'Conta Corrente', initialBalance: 0, userId },
                 { name: 'Carteira', initialBalance: 0, userId },
+                { name: 'Conta Corrente', initialBalance: 0, userId },
             ];
             initialAccounts.forEach(acc => {
                 const ref = doc(collection(db!, "accounts"));
@@ -114,9 +126,9 @@ const App: React.FC = () => {
             const initialCategories = [
                 { name: 'Salário', type: TransactionType.INCOME, userId },
                 { name: 'Alimentação', type: TransactionType.EXPENSE, userId },
+                { name: 'Lazer', type: TransactionType.EXPENSE, userId },
                 { name: 'Moradia', type: TransactionType.EXPENSE, userId },
                 { name: 'Transporte', type: TransactionType.EXPENSE, userId },
-                { name: 'Lazer', type: TransactionType.EXPENSE, userId },
             ];
             initialCategories.forEach(cat => {
                 const ref = doc(collection(db!, "categories"));
