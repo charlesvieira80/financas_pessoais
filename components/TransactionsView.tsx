@@ -206,7 +206,8 @@ const TransactionForm: React.FC<{
                 </div>}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
+            {/* STICKY FOOTER ACTIONS - Adjusted margins to match modal padding (p-6 md:p-8) */}
+            <div className="sticky bottom-0 -mx-6 -mb-6 md:-mx-8 md:-mb-8 px-6 py-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
@@ -297,7 +298,9 @@ const InstallmentForm: React.FC<{
                     {filteredSubcategories.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
                 </select>
             </div>}
-             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
+            
+             {/* STICKY FOOTER ACTIONS */}
+             <div className="sticky bottom-0 -mx-6 -mb-6 md:-mx-8 md:-mb-8 px-6 py-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Gerar Parcelamento</button>
             </div>
@@ -374,7 +377,9 @@ const TransferForm: React.FC<{
                 <label className={labelClass}>Observação (Opcional)</label>
                 <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
+
+            {/* STICKY FOOTER ACTIONS */}
+            <div className="sticky bottom-0 -mx-6 -mb-6 md:-mx-8 md:-mb-8 px-6 py-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Transferir</button>
             </div>
@@ -462,10 +467,10 @@ const OFXImportReviewModal: React.FC<{
                     <table className="w-full text-left text-sm" style={{ tableLayout: 'fixed' }}>
                         <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase font-bold">
                             <tr>
-                                <th className="p-3" style={{ width: '120px'}}>Data</th>
+                                <th className="p-3" style={{ width: '170px'}}>Data</th>
                                 <th className="p-3" style={{ width: '30%'}}>Descrição</th>
-                                <th className="p-3 text-right" style={{ width: '100px'}}>Valor</th>
-                                <th className="p-3" style={{ width: '100px'}}>Tipo</th>
+                                <th className="p-3 text-right" style={{ width: '140px'}}>Valor</th>
+                                <th className="p-3" style={{ width: '110px'}}>Tipo</th>
                                 <th className="p-3" style={{ width: '20%'}}>Categoria</th>
                                 <th className="p-3" style={{ width: '20%'}}>Subcategoria</th>
                                 <th className="p-3 text-center" style={{ width: '50px'}}></th>
@@ -588,13 +593,13 @@ const XLSXImportReviewModal: React.FC<{
                     <table className="w-full text-left text-sm" style={{ tableLayout: 'fixed' }}>
                         <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase font-bold">
                             <tr>
-                                <th className="p-3" style={{ width: '120px' }}>Data</th>
-                                <th className="p-3" style={{ width: '20%' }}>Descrição</th>
-                                <th className="p-3" style={{ width: '15%' }}>Conta</th>
-                                <th className="p-3" style={{ width: '15%' }}>Categoria</th>
-                                <th className="p-3" style={{ width: '15%' }}>Subcategoria</th>
-                                <th className="p-3 text-right" style={{ width: '100px' }}>Valor</th>
-                                <th className="p-3" style={{ width: '100px' }}>Tipo</th>
+                                <th className="p-3" style={{ width: '170px' }}>Data</th>
+                                <th className="p-3" style={{ width: '18%' }}>Descrição</th>
+                                <th className="p-3" style={{ width: '14%' }}>Conta</th>
+                                <th className="p-3" style={{ width: '14%' }}>Categoria</th>
+                                <th className="p-3" style={{ width: '14%' }}>Subcategoria</th>
+                                <th className="p-3 text-right" style={{ width: '140px' }}>Valor</th>
+                                <th className="p-3" style={{ width: '110px' }}>Tipo</th>
                                 <th className="p-3 text-center" style={{ width: '50px' }}></th>
                             </tr>
                         </thead>
@@ -1070,7 +1075,14 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions, accou
                             className="min-w-[150px] md:min-w-[180px] bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl py-2.5 px-4 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 outline-none shadow-sm text-sm md:text-base"
                         >
                             <option value="">Todas as Categorias</option>
-                            {categories.sort((a,b) => a.name.localeCompare(b.name)).map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                            {[...categories].sort((a,b) => {
+                                // First prioritize by type (Receita before Despesa)
+                                if (a.type !== b.type) {
+                                    return a.type === TransactionType.INCOME ? -1 : 1;
+                                }
+                                // Then sort alphabetically
+                                return a.name.localeCompare(b.name);
+                            }).map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                         </select>
                         {(searchTerm || filterAccountId || filterCategoryId) && (
                             <button

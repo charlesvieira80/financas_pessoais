@@ -38,7 +38,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
 
   return (
     <div 
-      className={`fixed inset-0 z-50 flex justify-center items-center transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 z-50 flex justify-center items-end sm:items-center transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
       onClick={onClose}
     >
       {/* Backdrop */}
@@ -46,16 +46,32 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
 
       {/* Content */}
       <div 
-        className={`bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full ${sizeClasses[size]} m-4 p-6 md:p-8 relative transform transition-all duration-300 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'} max-h-[90vh] overflow-y-auto scrollbar-hide`}
+        className={`
+            bg-white dark:bg-slate-900 shadow-2xl w-full relative transform transition-all duration-300 
+            ${sizeClasses[size]} 
+            
+            /* Mobile Styles: Bottom Sheet, Full Width, Dynamic Height */
+            rounded-t-3xl rounded-b-none m-0 max-h-[95dvh] flex flex-col
+            
+            /* Desktop Styles: Centered, Rounded, Margin */
+            sm:rounded-3xl sm:m-4 sm:max-h-[90vh]
+            
+            ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'} 
+            /* Importante: overflow-hidden no container principal para o flex funcionar */
+            overflow-hidden
+        `}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center pb-6 border-b border-slate-100 dark:border-slate-800 mb-6">
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
+        {/* Header - Fixed/Static */}
+        <div className="flex-shrink-0 flex justify-between items-center p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 z-20">
+          <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
           <button onClick={onClose} className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 transition-colors">
             <XIcon className="h-6 w-6" />
           </button>
         </div>
-        <div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-4">
           {children}
         </div>
       </div>

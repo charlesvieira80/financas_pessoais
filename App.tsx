@@ -332,6 +332,10 @@ const App: React.FC = () => {
                      {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
                      <span className="text-[10px] font-medium mt-1">Tema</span>
                  </button>
+                 <button onClick={logout} className="p-2 flex flex-col items-center text-slate-400 dark:text-slate-500 active:text-rose-600 dark:active:text-rose-400">
+                     <LogoutIcon className="w-6 h-6" />
+                     <span className="text-[10px] font-medium mt-1">Sair</span>
+                 </button>
             </nav>
         </div>
     );
