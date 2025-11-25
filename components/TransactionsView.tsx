@@ -207,7 +207,7 @@ const TransactionForm: React.FC<{
             </div>
 
             {/* STICKY FOOTER ACTIONS - Adjusted margins to match modal padding (p-6 md:p-8) */}
-            <div className="sticky bottom-0 -mx-6 -mb-6 md:-mx-8 md:-mb-8 px-6 py-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
+            <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
@@ -300,7 +300,7 @@ const InstallmentForm: React.FC<{
             </div>}
             
              {/* STICKY FOOTER ACTIONS */}
-             <div className="sticky bottom-0 -mx-6 -mb-6 md:-mx-8 md:-mb-8 px-6 py-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
+             <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Gerar Parcelamento</button>
             </div>
@@ -379,7 +379,7 @@ const TransferForm: React.FC<{
             </div>
 
             {/* STICKY FOOTER ACTIONS */}
-            <div className="sticky bottom-0 -mx-6 -mb-6 md:-mx-8 md:-mb-8 px-6 py-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
+            <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Transferir</button>
             </div>
