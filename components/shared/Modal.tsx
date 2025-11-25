@@ -50,14 +50,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
             bg-white dark:bg-slate-900 shadow-2xl w-full relative transform transition-all duration-300 
             ${sizeClasses[size]} 
             
-            /* Mobile Styles: Bottom Sheet, Full Width, Dynamic Height */
-            rounded-t-3xl rounded-b-none m-0 max-h-[95dvh] flex flex-col
+            /* Mobile Styles: Fixed Height Bottom Sheet */
+            rounded-t-3xl rounded-b-none m-0 h-[92dvh] flex flex-col
             
-            /* Desktop Styles: Centered, Rounded, Margin */
-            sm:rounded-3xl sm:m-4 sm:max-h-[90vh]
+            /* Desktop Styles: Centered, Dynamic Height */
+            sm:rounded-3xl sm:m-4 sm:h-auto sm:max-h-[90vh]
             
             ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'} 
-            /* Importante: overflow-hidden no container principal para o flex funcionar */
             overflow-hidden
         `}
         onClick={e => e.stopPropagation()}
