@@ -206,8 +206,8 @@ const TransactionForm: React.FC<{
                 </div>}
             </div>
 
-            {/* STICKY FOOTER ACTIONS - Adjusted margins to match modal padding (p-6 md:p-8) */}
-            <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
+            {/* FOOTER ACTIONS */}
+            <div className="-mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
@@ -299,8 +299,8 @@ const InstallmentForm: React.FC<{
                 </select>
             </div>}
             
-             {/* STICKY FOOTER ACTIONS */}
-             <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
+             {/* FOOTER ACTIONS */}
+             <div className="-mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Gerar Parcelamento</button>
             </div>
@@ -378,8 +378,8 @@ const TransferForm: React.FC<{
                 <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
             </div>
 
-            {/* STICKY FOOTER ACTIONS */}
-            <div className="sticky bottom-0 -mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 z-10 mt-6">
+            {/* FOOTER ACTIONS */}
+            <div className="-mx-6 md:-mx-8 px-6 py-4 pb-6 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Transferir</button>
             </div>
@@ -454,7 +454,7 @@ const OFXImportReviewModal: React.FC<{
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Revisar Importação (${reviewedTransactions.length} itens)`} size="5xl">
-            <div className="space-y-6">
+            <div className="space-y-6 pb-6">
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
                     <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Importar para a Conta:</label>
                     <select value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)} required className="w-full md:w-1/2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-xl p-2.5 border border-slate-200 dark:border-slate-600 focus:ring-violet-500 focus:border-violet-500">
@@ -588,7 +588,7 @@ const XLSXImportReviewModal: React.FC<{
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Revisar Planilha (${transactionsToImport.length} itens)`} size="5xl">
-             <div className="space-y-6">
+             <div className="space-y-6 pb-6">
                 <div className="max-h-[60vh] overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl shadow-inner">
                     <table className="w-full text-left text-sm" style={{ tableLayout: 'fixed' }}>
                         <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 text-slate-600 dark:text-slate-400 text-xs uppercase font-bold">
@@ -1277,7 +1277,7 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions, accou
             </Modal>
 
             <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Excluir Transação">
-                <div className="text-slate-600 dark:text-slate-300">
+                <div className="text-slate-600 dark:text-slate-300 pb-6">
                     <p className="mb-4">Tem certeza que deseja remover este lançamento?</p>
                      {transactions.find(t => t.id === transactionToDelete)?.transferId && (
                         <div className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-sm mb-4">
