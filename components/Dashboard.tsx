@@ -5,6 +5,7 @@ import { formatCurrency, formatMonthYear } from '../utils';
 import { getFinancialInsights } from '../services/geminiService';
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from './shared/icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 
 // Modern palette for charts
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#3b82f6', '#06b6d4', '#ec4899'];
@@ -50,9 +51,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         return transactions.filter(t => {
             const tDate = new Date(t.date);
             if (viewMode === 'yearly') {
-                return tDate.getFullYear() === currentDate.getFullYear();
+                return tDate.getUTCFullYear() === currentDate.getFullYear();
             }
-            return tDate.getFullYear() === currentDate.getFullYear() && tDate.getMonth() === currentDate.getMonth();
+            return tDate.getUTCFullYear() === currentDate.getFullYear() && tDate.getUTCMonth() === currentDate.getMonth();
         });
     }, [transactions, currentDate, viewMode]);
 
@@ -73,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         }));
 
         nonTransferTransactions.forEach(t => {
-            const dayOfMonth = new Date(t.date).getDate() - 1;
+            const dayOfMonth = new Date(t.date).getUTCDate() - 1;
             if (data[dayOfMonth]) {
                 if (t.type === TransactionType.INCOME) {
                     data[dayOfMonth].receita += t.amount;
@@ -92,7 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         const data = monthNames.map(month => ({ month, receita: 0, despesas: 0 }));
 
         nonTransferTransactions.forEach(t => {
-            const monthIndex = new Date(t.date).getMonth();
+            const monthIndex = new Date(t.date).getUTCMonth();
             if (t.type === TransactionType.INCOME) {
                 data[monthIndex].receita += t.amount;
             } else {
@@ -141,8 +142,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         const initialBalances = accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
         
         const endOfPeriod = viewMode === 'monthly'
-            ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
-            : new Date(currentDate.getFullYear(), 11, 31, 23, 59, 59);
+            ? new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999))
+            : new Date(Date.UTC(currentDate.getFullYear(), 11, 31, 23, 59, 59, 999));
 
         const netTransactions = transactions
             .filter(t => new Date(t.date) <= endOfPeriod)
@@ -173,6 +174,28 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         }
     };
 
+    const handleSwipeLeft = useCallback(() => {
+        if (viewMode === 'monthly') {
+            changeMonth(1); // Next month
+        } else {
+            changeYear(1); // Next year
+        }
+    }, [viewMode, currentDate]);
+    
+    const handleSwipeRight = useCallback(() => {
+        if (viewMode === 'monthly') {
+            changeMonth(-1); // Previous month
+        } else {
+            changeYear(-1); // Previous year
+        }
+    }, [viewMode, currentDate]);
+
+    const swipeHandlers = useSwipeNavigation({
+        onSwipeLeft: handleSwipeLeft,
+        onSwipeRight: handleSwipeRight,
+    });
+
+
     const endOfPeriodFormatted = (viewMode === 'monthly'
         ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
         : new Date(currentDate.getFullYear(), 11, 31)
@@ -190,7 +213,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         : `Gastos por Categoria`;
 
     return (
-        <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-6 md:space-y-8">
+        <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-6 md:space-y-8" {...swipeHandlers}>
             <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Financeiro</h1>

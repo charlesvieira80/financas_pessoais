@@ -5,6 +5,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, Upl
 import { parseOFX, ParsedTransaction } from '../services/ofxParser';
 import { parseXLSX, ParsedXLSXTransaction } from '../services/xlsxParser';
 import Modal from './shared/Modal';
+import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -90,6 +91,11 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
             return newDate;
         });
     };
+
+    const swipeHandlers = useSwipeNavigation({
+        onSwipeLeft: () => changeMonth(1), // Next month
+        onSwipeRight: () => changeMonth(-1), // Previous month
+    });
     
     const handleOFXFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         // This logic could be lifted to App.tsx and passed as a prop
@@ -102,7 +108,7 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
     }
 
     return (
-        <div className="p-4 md:p-10 max-w-7xl mx-auto">
+        <div className="p-4 md:p-10 max-w-7xl mx-auto" {...swipeHandlers}>
             <header className="flex flex-col lg:flex-row justify-between lg:items-center mb-6 md:mb-8 gap-4">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Transações</h1>

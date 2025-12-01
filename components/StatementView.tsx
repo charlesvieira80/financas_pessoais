@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, Account, Category, TransactionType } from '../types';
 import { formatCurrency, formatDate, formatMonthYear } from '../utils';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilIcon, TrashIcon } from './shared/icons';
+import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 
 interface StatementViewProps {
   transactions: Transaction[];
@@ -59,6 +60,11 @@ const StatementView: React.FC<StatementViewProps> = ({
             return newDate;
         });
     };
+
+    const swipeHandlers = useSwipeNavigation({
+        onSwipeLeft: () => changeMonth(1), // Next month
+        onSwipeRight: () => changeMonth(-1), // Previous month
+    });
 
     const statementData = useMemo((): StatementData | null => {
         if (!selectedAccountId) return null;
@@ -126,7 +132,7 @@ const StatementView: React.FC<StatementViewProps> = ({
     }, [selectedAccountId, currentDate, transactions, accounts]);
 
     return (
-        <div className="p-4 md:p-8 text-gray-800 dark:text-white max-w-7xl mx-auto">
+        <div className="p-4 md:p-8 text-gray-800 dark:text-white max-w-7xl mx-auto" {...swipeHandlers}>
             <header className="flex flex-col md:flex-row justify-between md:items-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-slate-100">Extratos Bancários</h1>
             </header>
