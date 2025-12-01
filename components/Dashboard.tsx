@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Transaction, Category, Account, TransactionType, Subcategory } from '../types';
+import { Transaction, Category, Account, TransactionType, Subcategory, ActiveView } from '../types';
 import { formatCurrency, formatMonthYear } from '../utils';
 import { getFinancialInsights } from '../services/geminiService';
 import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from './shared/icons';
@@ -15,9 +15,10 @@ interface DashboardProps {
     categories: Category[];
     accounts: Account[];
     subcategories: Subcategory[];
+    setActiveView: (view: ActiveView) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, accounts, subcategories }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, accounts, subcategories, setActiveView }) => {
     const { theme } = useTheme();
     const [insights, setInsights] = useState<string>('');
     const [isLoadingInsights, setIsLoadingInsights] = useState(false);
@@ -247,7 +248,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
             </header>
             
             {/* Total Balance Card */}
-            <div className="relative overflow-hidden bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group">
+            <div
+                onClick={() => setActiveView('balance')}
+                className="relative overflow-hidden bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
+                role="button"
+                tabIndex={0}
+                aria-label="Ver detalhes do saldo"
+            >
                  <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 md:w-32 md:h-32 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
                 <h2 className="relative text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Acumulado</h2>
                 <div className="relative flex items-baseline gap-2 flex-wrap">

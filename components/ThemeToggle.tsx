@@ -2,16 +2,21 @@ import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { SunIcon, MoonIcon } from './shared/icons';
 
+// This component can be a simple toggle switch or icon button
+// depending on where it's used. For the mobile menu, we might
+// want a switch, but an icon is fine for the sidebar.
 export const ThemeToggle: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <button
-      onClick={toggleTheme}
-      className="p-2 w-full flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-      aria-label="Toggle theme"
-    >
-      {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
-    </button>
+    <div className="flex items-center justify-center">
+        <label htmlFor="theme-toggle" className="flex items-center cursor-pointer">
+            <div className="relative">
+                <input type="checkbox" id="theme-toggle" className="sr-only" checked={theme === 'dark'} onChange={toggleTheme} />
+                <div className="block bg-slate-200 dark:bg-slate-700 w-12 h-6 rounded-full transition"></div>
+                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-0'}`}></div>
+            </div>
+        </label>
+    </div>
   );
 };

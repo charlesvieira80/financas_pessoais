@@ -1,8 +1,11 @@
 
+
 export enum TransactionType {
   INCOME = 'Income',
   EXPENSE = 'Expense',
 }
+
+export type ActiveView = 'dashboard' | 'transactions' | 'statement' | 'balance' | 'settings';
 
 export interface Subcategory {
   id: string;

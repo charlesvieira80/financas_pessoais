@@ -1,11 +1,12 @@
 // FIX: Imported `useMemo` from React to resolve 'Cannot find name' errors.
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Account, Category, Subcategory, Transaction, TransactionType } from './types';
+import { Account, Category, Subcategory, Transaction, TransactionType, ActiveView } from './types';
 import Dashboard from './components/Dashboard';
 import TransactionsView from './components/TransactionsView';
 import SettingsView from './components/SettingsView';
 import StatementView from './components/StatementView';
-import { DashboardIcon, SettingsIcon, TransactionsIcon, DocumentTextIcon, LogoutIcon, SunIcon, MoonIcon, SparklesIcon, XIcon, PlusIcon, TrashIcon, PencilIcon, UploadIcon, TableIcon } from './components/shared/icons';
+import BalanceView from './components/BalanceView';
+import { DashboardIcon, SettingsIcon, TransactionsIcon, DocumentTextIcon, LogoutIcon, SunIcon, MoonIcon, SparklesIcon, XIcon, PlusIcon, TrashIcon, PencilIcon, UploadIcon, TableIcon, BalanceIcon, MoreHorizontalIcon, ChevronDoubleLeftIcon } from './components/shared/icons';
 import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import { useTheme } from './contexts/ThemeContext';
@@ -400,9 +401,7 @@ const TransferForm: React.FC<{
     );
 };
 
-// ... Import modals would also be defined here but are omitted for brevity in this change, as they are not directly affected.
 
-type ActiveView = 'dashboard' | 'transactions' | 'statement' | 'settings';
 
 interface ImportTransaction extends ParsedTransaction {
     key: string; // for React list rendering
@@ -418,7 +417,7 @@ type ReviewedXLSXTransaction = ParsedXLSXTransaction & {
 
 const App: React.FC = () => {
     const { isAuthenticated, user, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    const { theme } = useTheme();
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
 
     // Estado local sincronizado com Firebase
@@ -427,6 +426,11 @@ const App: React.FC = () => {
     const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loadingData, setLoadingData] = useState(false);
+
+    // --- NAVIGATION STATE ---
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
 
     // --- MODAL STATE (Centralized) ---
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -846,23 +850,25 @@ const App: React.FC = () => {
 
         switch (activeView) {
             case 'dashboard':
-                return <Dashboard transactions={transactions} categories={categories} accounts={accounts} subcategories={subcategories} />;
+                return <Dashboard transactions={transactions} categories={categories} accounts={accounts} subcategories={subcategories} setActiveView={setActiveView} />;
             case 'transactions':
                 return <TransactionsView {...transactionViewProps} addAccount={addAccount} addCategory={addCategory} addSubcategory={addSubcategory}/>;
             case 'statement':
                 return <StatementView {...statementViewProps} />;
+            case 'balance':
+                return <BalanceView accounts={accounts} transactions={transactions} />;
             case 'settings':
                 return <SettingsView {...settingsProps} />;
             default:
-                return <Dashboard transactions={transactions} categories={categories} accounts={accounts} subcategories={subcategories} />;
+                return <Dashboard transactions={transactions} categories={categories} accounts={accounts} subcategories={subcategories} setActiveView={setActiveView} />;
         }
     };
     
     const NavItem: React.FC<{ view: ActiveView, label: string, icon: React.ReactNode }> = ({ view, label, icon }) => (
-        <li>
+        <li title={label}>
             <button
                 onClick={() => setActiveView(view)}
-                className={`flex items-center p-3 my-2 rounded-xl w-full text-left transition-all duration-200 group ${
+                className={`flex items-center p-3 my-1 rounded-xl w-full text-left transition-all duration-200 group ${isSidebarOpen ? '' : 'justify-center'} ${
                     activeView === view 
                     ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30' 
                     : 'text-slate-500 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-slate-800 hover:text-violet-600 dark:hover:text-violet-400'
@@ -871,93 +877,123 @@ const App: React.FC = () => {
                 <span className={`transition-transform duration-200 ${activeView === view ? 'scale-110' : 'group-hover:scale-110'}`}>
                    {icon}
                 </span>
-                <span className="ml-3 font-medium">{label}</span>
+                <span className={`ml-4 font-medium whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 sr-only'}`}>{label}</span>
             </button>
         </li>
+    );
+
+    const MobileNavItem: React.FC<{ view: ActiveView, label: string, icon: React.ReactNode }> = ({ view, label, icon }) => (
+        <button 
+            key={view}
+            onClick={() => setActiveView(view)} 
+            className={`p-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full ${
+                activeView === view 
+                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20' 
+                : 'text-slate-400 dark:text-slate-500'
+            }`}
+        >
+            <div className={`w-6 h-6 ${activeView === view ? 'scale-110' : ''} transition-transform`}>
+                {icon}
+            </div>
+            <span className="text-[10px] font-medium mt-1">{label}</span>
+        </button>
     );
 
     return (
         <div className="min-h-screen font-sans text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 selection:bg-violet-200 dark:selection:bg-violet-900">
             {/* Sidebar Desktop */}
-            <aside className="w-72 bg-white dark:bg-slate-900 p-6 border-r border-slate-200 dark:border-slate-800 hidden md:flex md:flex-col fixed h-full z-20 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                <div className="flex items-center gap-3 mb-8 px-2">
-                    <div className="p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg text-white shadow-lg shadow-violet-500/30">
+            <aside className={`bg-white dark:bg-slate-900 p-4 border-r border-slate-200 dark:border-slate-800 hidden md:flex md:flex-col fixed h-full z-20 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-72' : 'w-20'}`}>
+                 <div className={`flex items-center gap-3 mb-8 px-2 transition-all duration-300 ${isSidebarOpen ? 'justify-start' : 'justify-center'}`}>
+                    <div className="flex-shrink-0 p-2 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-lg text-white shadow-lg shadow-violet-500/30">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Minhas <span className="text-violet-600">Finanças</span></span>
+                    <span className={`text-xl font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 sr-only'}`}>Minhas <span className="text-violet-600">Finanças</span></span>
                 </div>
 
-                <div className="mb-6 px-2">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-                        <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-1">Olá,</p>
-                        <p className="font-bold text-slate-800 dark:text-white truncate">{user?.firstName} {user?.lastName}</p>
-                        <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                 <div className="mb-6 px-2">
+                    <div className={`p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all duration-300 ${!isSidebarOpen && 'p-2'}`}>
+                        <div className={`flex items-center ${!isSidebarOpen && 'justify-center'}`}>
+                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-white uppercase flex-shrink-0">
+                                 {user?.firstName.charAt(0)}
+                             </div>
+                             <div className={`ml-3 overflow-hidden transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 sr-only'}`}>
+                                <p className="font-bold text-sm text-slate-800 dark:text-white truncate">{user?.firstName} {user?.lastName}</p>
+                                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+
                 <nav className="flex-grow">
-                    <ul className="space-y-1">
+                    <ul>
                         <NavItem view="dashboard" label="Painel Geral" icon={<DashboardIcon className="w-5 h-5" />} />
                         <NavItem view="transactions" label="Transações" icon={<TransactionsIcon className="w-5 h-5" />} />
                         <NavItem view="statement" label="Extratos" icon={<DocumentTextIcon className="w-5 h-5" />} />
+                        <NavItem view="balance" label="Saldos" icon={<BalanceIcon className="w-5 h-5" />} />
                         <NavItem view="settings" label="Configurações" icon={<SettingsIcon className="w-5 h-5" />} />
                     </ul>
                 </nav>
                 
-                <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                     <div className="flex items-center justify-between px-2 mb-2">
-                         <span className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 tracking-wider">Preferências</span>
-                     </div>
-                    <ThemeToggle />
+                <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
                     <button
-                        onClick={logout}
-                        className="flex items-center p-3 rounded-xl w-full text-left transition-colors text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400"
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className="flex items-center p-3 rounded-xl w-full text-left transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
-                        <LogoutIcon className="w-5 h-5" />
-                        <span className="ml-3 font-medium">Sair</span>
+                         <ChevronDoubleLeftIcon className={`w-5 h-5 transition-transform duration-300 ${!isSidebarOpen && 'rotate-180'}`} />
+                        <span className={`ml-4 font-medium whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 sr-only'}`}>Recolher</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="md:ml-72 min-h-screen transition-all duration-300 ease-in-out pb-24 md:pb-0">
+            <main className={`transition-all duration-300 ease-in-out pb-24 md:pb-0 ${isSidebarOpen ? 'md:ml-72' : 'md:ml-20'}`}>
                  {renderView()}
             </main>
 
              {/* Mobile Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 flex justify-around items-center p-2 z-50 safe-area-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                {[
-                    { view: 'dashboard', icon: <DashboardIcon />, label: 'Painel' },
-                    { view: 'transactions', icon: <TransactionsIcon />, label: 'Transações' },
-                    { view: 'statement', icon: <DocumentTextIcon />, label: 'Extratos' },
-                    { view: 'settings', icon: <SettingsIcon />, label: 'Ajustes' }
-                ].map((item) => (
-                    <button 
-                        key={item.view}
-                        onClick={() => setActiveView(item.view as ActiveView)} 
-                        className={`p-2 rounded-xl flex flex-col items-center transition-all duration-200 w-16 ${
-                            activeView === item.view 
-                            ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20' 
-                            : 'text-slate-400 dark:text-slate-500'
-                        }`}
-                    >
-                        <div className={`w-6 h-6 ${activeView === item.view ? 'scale-110' : ''} transition-transform`}>
-                            {item.icon}
-                        </div>
-                        <span className="text-[10px] font-medium mt-1">{item.label}</span>
-                    </button>
-                ))}
-                 <button onClick={toggleTheme} className="p-2 flex flex-col items-center text-slate-400 dark:text-slate-500">
-                     {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
-                     <span className="text-[10px] font-medium mt-1">Tema</span>
-                 </button>
-                 <button onClick={logout} className="p-2 flex flex-col items-center text-slate-400 dark:text-slate-500 active:text-rose-600 dark:active:text-rose-400">
-                     <LogoutIcon className="w-6 h-6" />
-                     <span className="text-[10px] font-medium mt-1">Sair</span>
-                 </button>
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 grid grid-cols-5 gap-1 p-2 z-50 safe-area-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <MobileNavItem view="dashboard" label="Painel" icon={<DashboardIcon />} />
+                <MobileNavItem view="transactions" label="Transações" icon={<TransactionsIcon />} />
+                <MobileNavItem view="statement" label="Extratos" icon={<DocumentTextIcon />} />
+                <MobileNavItem view="balance" label="Saldos" icon={<BalanceIcon />} />
+                <button 
+                    onClick={() => setIsMobileMenuOpen(true)} 
+                    className="p-2 rounded-xl flex flex-col items-center justify-center transition-all duration-200 w-full text-slate-400 dark:text-slate-500"
+                >
+                    <div className="w-6 h-6"><MoreHorizontalIcon /></div>
+                    <span className="text-[10px] font-medium mt-1">Mais</span>
+                </button>
             </nav>
 
              {/* MODALS CONTAINER */}
+             <Modal isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} title="Mais Opções">
+                 <div className="space-y-2 pb-8">
+                     <button
+                        onClick={() => { setActiveView('settings'); setIsMobileMenuOpen(false); }}
+                        className="w-full flex items-center p-4 text-left rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                     >
+                         <SettingsIcon className="w-6 h-6 mr-4 text-slate-500 dark:text-slate-400" />
+                         <span className="font-medium">Configurações</span>
+                     </button>
+                     <div className="w-full flex items-center p-4 text-left rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                         <div className="w-6 h-6 mr-4 text-slate-500 dark:text-slate-400">
+                             {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+                         </div>
+                         <span className="font-medium flex-grow">Alterar Tema</span>
+                         <ThemeToggle />
+                     </div>
+                     <button
+                        onClick={logout}
+                        className="w-full flex items-center p-4 text-left rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                     >
+                         <LogoutIcon className="w-6 h-6 mr-4" />
+                         <span className="font-medium">Sair</span>
+                     </button>
+                 </div>
+             </Modal>
+
+
             <Modal isOpen={isTransactionModalOpen} onClose={handleCloseTransactionModal} title={editingTransaction ? "Editar Transação" : "Nova Transação"}>
                 <TransactionForm 
                     transaction={editingTransaction}
