@@ -1,12 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, Account, Category, TransactionType } from '../types';
 import { formatCurrency, formatDate, formatMonthYear } from '../utils';
-import { ChevronLeftIcon, ChevronRightIcon } from './shared/icons';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilIcon, TrashIcon } from './shared/icons';
 
 interface StatementViewProps {
   transactions: Transaction[];
   accounts: Account[];
   categories: Category[];
+  handleOpenAddTransaction: (preselect: { accountId: string }) => void;
+  handleOpenInstallmentModal: (preselect: { accountId: string }) => void;
+  handleOpenTransferModal: (preselect: { accountId: string }) => void;
+  handleEditTransaction: (transaction: Transaction) => void;
+  handleDeleteRequest: (id: string) => void;
 }
 
 interface DailyGroup {
@@ -24,9 +29,20 @@ interface StatementData {
     totalExpense: number;
 }
 
-const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, categories }) => {
+const StatementView: React.FC<StatementViewProps> = ({ 
+    transactions, 
+    accounts, 
+    categories,
+    handleOpenAddTransaction,
+    handleOpenInstallmentModal,
+    handleOpenTransferModal,
+    handleEditTransaction,
+    handleDeleteRequest
+}) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+    const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
+
 
     // Set default account on load
     useEffect(() => {
@@ -185,7 +201,7 @@ const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, c
                                         <div key={group.date}>
                                             <div className="flex justify-between items-baseline pb-2 border-b border-slate-200 dark:border-slate-700 mb-2">
                                                 <h3 className="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200 capitalize">
-                                                    {new Date(group.date).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                    {new Date(group.date).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}
                                                 </h3>
                                                 <div className="text-right">
                                                     <span className="text-xs text-slate-400 dark:text-slate-500 mr-2 hidden sm:inline">Saldo do Dia: </span>
@@ -198,13 +214,32 @@ const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, c
                                                     const isIncome = t.type === TransactionType.INCOME;
                                                     return (
                                                         <li key={t.id} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0">
-                                                            <div className="flex flex-col">
-                                                                <p className="font-medium text-sm md:text-base text-slate-900 dark:text-slate-100">{t.description}</p>
+                                                            <div className="flex-1 overflow-hidden mr-4">
+                                                                <p className="font-medium text-sm md:text-base text-slate-900 dark:text-slate-100 truncate">{t.description}</p>
                                                                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{category?.name || (t.transferId ? 'Transferência' : 'Sem Categoria')}</p>
                                                             </div>
-                                                            <p className={`font-bold text-sm md:text-base whitespace-nowrap ml-4 ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                                {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
-                                                            </p>
+                                                            <div className="flex items-center gap-2 md:gap-4">
+                                                                <p className={`font-bold text-sm md:text-base whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                                    {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
+                                                                </p>
+                                                                <div className="flex gap-1">
+                                                                    <button 
+                                                                        onClick={() => handleEditTransaction(t)} 
+                                                                        disabled={!!t.transferId} 
+                                                                        className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                        aria-label="Editar transação"
+                                                                    >
+                                                                        <PencilIcon className="w-4 h-4"/>
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteRequest(t.id)} 
+                                                                        className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                                                                        aria-label="Excluir transação"
+                                                                    >
+                                                                        <TrashIcon className="w-4 h-4"/>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         </li>
                                                     );
                                                 })}
@@ -217,6 +252,42 @@ const StatementView: React.FC<StatementViewProps> = ({ transactions, accounts, c
                     </div>
                 )}
             </div>
+
+            {/* Quick Add FAB */}
+            {selectedAccountId && (
+                <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-30">
+                    <div 
+                        className={`flex flex-col items-end gap-3 transition-all duration-300 ${isFabMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        style={{ transform: isFabMenuOpen ? 'translateY(0)' : 'translateY(10px)' }}
+                    >
+                        <button
+                            onClick={() => { handleOpenTransferModal({ accountId: selectedAccountId }); setIsFabMenuOpen(false); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl shadow-lg text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-600 transition-all"
+                        >
+                            Transferência
+                        </button>
+                        <button
+                            onClick={() => { handleOpenInstallmentModal({ accountId: selectedAccountId }); setIsFabMenuOpen(false); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl shadow-lg text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-600 transition-all"
+                        >
+                            Parcelamento
+                        </button>
+                        <button
+                            onClick={() => { handleOpenAddTransaction({ accountId: selectedAccountId }); setIsFabMenuOpen(false); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl shadow-lg text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-600 transition-all"
+                        >
+                            Transação
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setIsFabMenuOpen(!isFabMenuOpen)}
+                        className="mt-3 w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-violet-500/40 transform hover:scale-105 transition-all"
+                        aria-label="Adicionar transação"
+                    >
+                        <PlusIcon className={`w-8 h-8 transition-transform duration-300 ${isFabMenuOpen ? 'rotate-45' : 'rotate-0'}`} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

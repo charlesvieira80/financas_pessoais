@@ -74,21 +74,24 @@ export const parseXLSX = (xlsxContent: ArrayBuffer): ParsedXLSXTransaction[] => 
         }
 
         let date: Date;
-        if (dateValue instanceof Date) {
-            const tzOffset = dateValue.getTimezoneOffset() * 60000;
-            date = new Date(dateValue.getTime() - tzOffset);
-        } else if (typeof dateValue === 'string' || typeof dateValue === 'number') {
-            const d = new Date(dateValue);
-            // Handle cases where date might be parsed incorrectly and check for validity
-            if (!isNaN(d.getTime())) {
-                const tzOffset = d.getTimezoneOffset() * 60000;
-                date = new Date(d.getTime() - tzOffset);
-            } else {
-                 continue;
-            }
-        } else {
-            continue; // Skip if date is not a valid type
+
+        // The xlsx library with `cellDates: true` should return a Date object.
+        // It might also be a string if the cell format is text.
+        // This will parse it into a local Date object.
+        const tempDate = new Date(dateValue);
+        
+        if (isNaN(tempDate.getTime())) {
+            continue; // Skip if date is invalid.
         }
+        
+        // The tempDate is in the browser's local timezone. To avoid the "day before" issue,
+        // we extract the year, month, and day components from this local date...
+        const year = tempDate.getFullYear();
+        const month = tempDate.getMonth();
+        const day = tempDate.getDate();
+        
+        // ...and then create a new Date object at midnight UTC for that specific day.
+        date = new Date(Date.UTC(year, month, day));
         
         transactions.push({
             key: crypto.randomUUID(),
