@@ -419,6 +419,8 @@ const App: React.FC = () => {
     const { isAuthenticated, user, logout } = useAuth();
     const { theme } = useTheme();
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+    const [preselectedAccountId, setPreselectedAccountId] = useState<string | null>(null);
+
 
     // Estado local sincronizado com Firebase
     const [accounts, setAccounts] = useState<Account[]>([]);
@@ -803,6 +805,11 @@ const App: React.FC = () => {
         setIsTransactionModalOpen(true);
     };
 
+    const handleNavigateToStatement = (accountId: string) => {
+        setPreselectedAccountId(accountId);
+        setActiveView('statement');
+    };
+
 
     const settingsProps = {
         accounts, addAccount, updateAccount, deleteAccount,
@@ -845,7 +852,8 @@ const App: React.FC = () => {
              handleOpenInstallmentModal,
              handleOpenTransferModal,
              handleEditTransaction,
-             handleDeleteRequest
+             handleDeleteRequest,
+             initialAccountId: preselectedAccountId
         };
 
         switch (activeView) {
@@ -856,7 +864,7 @@ const App: React.FC = () => {
             case 'statement':
                 return <StatementView {...statementViewProps} />;
             case 'balance':
-                return <BalanceView accounts={accounts} transactions={transactions} />;
+                return <BalanceView accounts={accounts} transactions={transactions} onNavigateToStatement={handleNavigateToStatement} />;
             case 'settings':
                 return <SettingsView {...settingsProps} />;
             default:

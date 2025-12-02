@@ -8,9 +8,10 @@ import { useAuth } from '../contexts/AuthContext';
 interface BalanceViewProps {
   transactions: Transaction[];
   accounts: Account[];
+  onNavigateToStatement: (accountId: string) => void;
 }
 
-const BalanceView: React.FC<BalanceViewProps> = ({ transactions, accounts }) => {
+const BalanceView: React.FC<BalanceViewProps> = ({ transactions, accounts, onNavigateToStatement }) => {
     const { user } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
@@ -95,8 +96,8 @@ const BalanceView: React.FC<BalanceViewProps> = ({ transactions, accounts }) => 
     });
 
     return (
-        <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-6 md:space-y-8" {...swipeHandlers}>
-            <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="p-4 md:p-10 max-w-7xl mx-auto" {...swipeHandlers}>
+            <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6 md:mb-8">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Saldos e Patrimônio</h1>
                     <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Seu balanço financeiro consolidado.</p>
@@ -127,56 +128,64 @@ const BalanceView: React.FC<BalanceViewProps> = ({ transactions, accounts }) => 
                     </div>
                 </div>
             </header>
-
-            <div className="relative overflow-hidden bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group">
-                 <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 md:w-40 md:h-40 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
-                <h2 className="relative text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Consolidado</h2>
-                <div className="relative flex items-baseline gap-2 flex-wrap">
-                    <span className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 break-all">
-                        {formatCurrency(balanceData.totalBalance)}
-                    </span>
+            <div key={currentDate.toISOString()} className="space-y-6 md:space-y-8 animate-content-in">
+                <div className="relative overflow-hidden bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 group">
+                     <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 md:w-40 md:h-40 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
+                    <h2 className="relative text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Consolidado</h2>
+                    <div className="relative flex items-baseline gap-2 flex-wrap">
+                        <span className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 break-all">
+                            {formatCurrency(balanceData.totalBalance)}
+                        </span>
+                    </div>
+                    <p className="relative mt-3 text-xs md:text-sm font-medium text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${balanceData.totalBalance >= 0 ? 'bg-emerald-400' : 'bg-rose-400'} animate-pulse`}></span>
+                        Posição em {endDateFormatted}
+                    </p>
                 </div>
-                <p className="relative mt-3 text-xs md:text-sm font-medium text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${balanceData.totalBalance >= 0 ? 'bg-emerald-400' : 'bg-rose-400'} animate-pulse`}></span>
-                    Posição em {endDateFormatted}
-                </p>
-            </div>
-            
-             <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Saldos por Conta</h3>
-                {accounts.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-                        {balanceData.accountBalances.map(acc => {
-                             const percentage = (acc.currentBalance > 0 && balanceData.positiveTotal > 0)
-                                ? (acc.currentBalance / balanceData.positiveTotal) * 100
-                                : 0;
-                            return(
-                                <div key={acc.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-                                    <div>
-                                        <h4 className="font-bold text-lg text-slate-800 dark:text-white truncate">{acc.name}</h4>
-                                        <p className={`text-2xl font-bold mt-2 ${acc.currentBalance >= 0 ? 'text-slate-700 dark:text-slate-200' : 'text-rose-600 dark:text-rose-400'}`}>
-                                            {formatCurrency(acc.currentBalance)}
-                                        </p>
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                         <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5">Proporção do patrimônio</p>
-                                        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5">
-                                            <div 
-                                                className="bg-gradient-to-r from-violet-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500 ease-out" 
-                                                style={{ width: `${Math.max(0, Math.min(percentage, 100))}%` }}>
+                
+                 <div>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Saldos por Conta</h3>
+                    {accounts.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                            {balanceData.accountBalances.map(acc => {
+                                 const percentage = (acc.currentBalance > 0 && balanceData.positiveTotal > 0)
+                                    ? (acc.currentBalance / balanceData.positiveTotal) * 100
+                                    : 0;
+                                return(
+                                    <div 
+                                        key={acc.id} 
+                                        onClick={() => onNavigateToStatement(acc.id)}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`Ver extrato da conta ${acc.name}`}
+                                        className="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col justify-between cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                                    >
+                                        <div>
+                                            <h4 className="font-bold text-lg text-slate-800 dark:text-white truncate">{acc.name}</h4>
+                                            <p className={`text-2xl font-bold mt-2 ${acc.currentBalance >= 0 ? 'text-slate-700 dark:text-slate-200' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                {formatCurrency(acc.currentBalance)}
+                                            </p>
+                                        </div>
+                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                             <p className="text-xs text-slate-400 dark:text-slate-500 mb-1.5">Proporção do patrimônio</p>
+                                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5">
+                                                <div 
+                                                    className="bg-gradient-to-r from-violet-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500 ease-out" 
+                                                    style={{ width: `${Math.max(0, Math.min(percentage, 100))}%` }}>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                ) : (
-                    <div className="text-center py-12 px-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                        <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Nenhuma conta cadastrada</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Adicione sua primeira conta na tela de Configurações para começar a ver seus saldos.</p>
-                    </div>
-                )}
+                                )
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 px-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Nenhuma conta cadastrada</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Adicione sua primeira conta na tela de Configurações para começar a ver seus saldos.</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

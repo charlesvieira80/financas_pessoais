@@ -1,5 +1,4 @@
-
-import { useRef, TouchEvent } from 'react';
+import { useRef, TouchEvent, useCallback } from 'react';
 
 interface SwipeConfig {
   onSwipeLeft: () => void;
@@ -23,31 +22,40 @@ export const useSwipeNavigation = ({
   const touchStartY = useRef(0);
   const touchEndX = useRef(0);
   const touchEndY = useRef(0);
+  const isSwipeCancelled = useRef(false);
 
   // FIX: Use TouchEvent type from React import to resolve namespace error.
-  const handleTouchStart = (e: TouchEvent) => {
+  const handleTouchStart = useCallback((e: TouchEvent) => {
     // Reset refs for new touch
     touchStartX.current = e.targetTouches[0].clientX;
     touchStartY.current = e.targetTouches[0].clientY;
     touchEndX.current = e.targetTouches[0].clientX;
     touchEndY.current = e.targetTouches[0].clientY;
-  };
+    isSwipeCancelled.current = false;
+  }, []);
 
   // FIX: Use TouchEvent type from React import to resolve namespace error.
-  const handleTouchMove = (e: TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (isSwipeCancelled.current) return;
+
+    const currentY = e.targetTouches[0].clientY;
+    const verticalDiff = Math.abs(touchStartY.current - currentY);
+
+    // If it becomes more of a vertical scroll, cancel the gesture for this touch session
+    if (verticalDiff > maxVerticalThreshold) {
+      isSwipeCancelled.current = true;
+      return;
+    }
+    
     // Update end coordinates on move
     touchEndX.current = e.targetTouches[0].clientX;
     touchEndY.current = e.targetTouches[0].clientY;
-  };
+  }, [maxVerticalThreshold]);
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
+    if (isSwipeCancelled.current) return;
+
     const horizontalDiff = touchStartX.current - touchEndX.current;
-    const verticalDiff = Math.abs(touchStartY.current - touchEndY.current);
-    
-    // Ignore if it's more of a vertical scroll
-    if (verticalDiff > maxVerticalThreshold) {
-        return;
-    }
 
     // Swipe left (finger moved from right to left)
     if (horizontalDiff > threshold) {
@@ -58,7 +66,7 @@ export const useSwipeNavigation = ({
     if (horizontalDiff < -threshold) {
       onSwipeRight();
     }
-  };
+  }, [onSwipeLeft, onSwipeRight, threshold]);
 
   return {
     onTouchStart: handleTouchStart,

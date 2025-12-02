@@ -13,6 +13,7 @@ interface StatementViewProps {
   handleOpenTransferModal: (preselect: { accountId: string }) => void;
   handleEditTransaction: (transaction: Transaction) => void;
   handleDeleteRequest: (id: string) => void;
+  initialAccountId?: string | null;
 }
 
 interface DailyGroup {
@@ -38,19 +39,22 @@ const StatementView: React.FC<StatementViewProps> = ({
     handleOpenInstallmentModal,
     handleOpenTransferModal,
     handleEditTransaction,
-    handleDeleteRequest
+    handleDeleteRequest,
+    initialAccountId
 }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedAccountId, setSelectedAccountId] = useState<string>('');
     const [isFabMenuOpen, setIsFabMenuOpen] = useState(false);
 
 
-    // Set default account on load
+    // Set default account on load or when navigating from another view
     useEffect(() => {
-        if (accounts.length > 0 && !selectedAccountId) {
+        if (initialAccountId) {
+            setSelectedAccountId(initialAccountId);
+        } else if (accounts.length > 0 && !selectedAccountId) {
             setSelectedAccountId(accounts[0].id);
         }
-    }, [accounts, selectedAccountId]);
+    }, [accounts, selectedAccountId, initialAccountId]);
     
     const changeMonth = (offset: number) => {
         setCurrentDate(prev => {
@@ -167,7 +171,7 @@ const StatementView: React.FC<StatementViewProps> = ({
             </div>
 
             {/* Statement Display */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div key={`${selectedAccountId}-${currentDate.toISOString()}`} className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden animate-content-in">
                 {!selectedAccountId ? (
                     <p className="p-8 text-center text-gray-500 dark:text-slate-400">Por favor, selecione uma conta para ver o extrato.</p>
                 ) : !statementData ? (

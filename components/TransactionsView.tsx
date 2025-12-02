@@ -203,103 +203,105 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                     <h2 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">{formatMonthYear(currentDate)}</h2>
                     <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon /></button>
                 </div>
+                
+                <div key={currentDate.toISOString()} className="animate-content-in">
+                    {/* DESKTOP TABLE VIEW */}
+                    <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-bold">
+                                <tr>
+                                    <th className="p-5">Data</th>
+                                    <th className="p-5 w-1/3">Descrição</th>
+                                    <th className="p-5">Categoria</th>
+                                    <th className="p-5 text-right">Valor</th>
+                                    <th className="p-5 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
+                                    const category = categories.find(c => c.id === t.categoryId);
+                                    const subcategory = subcategories.find(s => s.id === t.subcategoryId);
+                                    return (
+                                        <tr key={t.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="p-5 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">{formatDate(t.date)}</td>
+                                            <td className="p-5">
+                                                <div className="font-medium text-slate-900 dark:text-white">{t.description}</div>
+                                                {t.accountId && <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{accounts.find(a => a.id === t.accountId)?.name}</div>}
+                                            </td>
+                                            <td className="p-5">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.transferId ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
+                                                    {t.transferId ? 'Transferência' : (category?.name || 'Sem Categoria')}
+                                                    {subcategory && <span className="opacity-60 ml-1">/ {subcategory.name}</span>}
+                                                </span>
+                                            </td>
+                                            <td className={`p-5 font-bold text-right whitespace-nowrap ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)}
+                                            </td>
+                                            <td className="p-5">
+                                                <div className="flex justify-center items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => handleEditTransaction(t)} disabled={!!t.transferId} className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4"/></button>
+                                                    <button onClick={() => deleteTransaction(t.id)} className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"><TrashIcon className="w-4 h-4"/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan={5} className="text-center p-12 text-slate-500 dark:text-slate-400">
+                                            <div className="flex flex-col items-center">
+                                                <SearchIcon className="w-12 h-12 text-slate-300 mb-3"/>
+                                                <p className="text-lg font-medium">Nenhuma transação encontrada</p>
+                                                <p className="text-sm opacity-70">Tente ajustar os filtros ou adicione uma nova transação.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-                {/* DESKTOP TABLE VIEW */}
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider font-bold">
-                            <tr>
-                                <th className="p-5">Data</th>
-                                <th className="p-5 w-1/3">Descrição</th>
-                                <th className="p-5">Categoria</th>
-                                <th className="p-5 text-right">Valor</th>
-                                <th className="p-5 text-center">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {/* MOBILE CARD VIEW */}
+                    <div className="md:hidden">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
                             {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
                                 const category = categories.find(c => c.id === t.categoryId);
                                 const subcategory = subcategories.find(s => s.id === t.subcategoryId);
                                 return (
-                                    <tr key={t.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <td className="p-5 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">{formatDate(t.date)}</td>
-                                        <td className="p-5">
-                                            <div className="font-medium text-slate-900 dark:text-white">{t.description}</div>
-                                            {t.accountId && <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{accounts.find(a => a.id === t.accountId)?.name}</div>}
-                                        </td>
-                                        <td className="p-5">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.transferId ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
+                                    <div key={t.id} className="p-4 flex flex-col gap-3 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex flex-col">
+                                                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{formatDate(t.date)}</span>
+                                                 <h3 className="font-semibold text-slate-900 dark:text-white text-base leading-tight">{t.description}</h3>
+                                                 {t.accountId && <span className="text-xs text-slate-400 mt-1">{accounts.find(a => a.id === t.accountId)?.name}</span>}
+                                            </div>
+                                            <div className={`font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                 {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center mt-1">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${t.transferId ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
                                                 {t.transferId ? 'Transferência' : (category?.name || 'Sem Categoria')}
                                                 {subcategory && <span className="opacity-60 ml-1">/ {subcategory.name}</span>}
                                             </span>
-                                        </td>
-                                        <td className={`p-5 font-bold text-right whitespace-nowrap ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                            {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)}
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex justify-center items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditTransaction(t)} disabled={!!t.transferId} className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4"/></button>
-                                                <button onClick={() => deleteTransaction(t.id)} className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"><TrashIcon className="w-4 h-4"/></button>
+                                            
+                                            <div className="flex gap-2">
+                                                {!t.transferId && (
+                                                    <button onClick={() => handleEditTransaction(t)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-violet-50 active:text-violet-600"><PencilIcon className="w-4 h-4"/></button>
+                                                )}
+                                                <button onClick={() => deleteTransaction(t.id)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-rose-50 active:text-rose-600"><TrashIcon className="w-4 h-4"/></button>
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                    </div>
                                 );
                             }) : (
-                                <tr>
-                                    <td colSpan={5} className="text-center p-12 text-slate-500 dark:text-slate-400">
-                                        <div className="flex flex-col items-center">
-                                            <SearchIcon className="w-12 h-12 text-slate-300 mb-3"/>
-                                            <p className="text-lg font-medium">Nenhuma transação encontrada</p>
-                                            <p className="text-sm opacity-70">Tente ajustar os filtros ou adicione uma nova transação.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* MOBILE CARD VIEW */}
-                <div className="md:hidden">
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
-                            const category = categories.find(c => c.id === t.categoryId);
-                            const subcategory = subcategories.find(s => s.id === t.subcategoryId);
-                            return (
-                                <div key={t.id} className="p-4 flex flex-col gap-3 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex flex-col">
-                                             <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{formatDate(t.date)}</span>
-                                             <h3 className="font-semibold text-slate-900 dark:text-white text-base leading-tight">{t.description}</h3>
-                                             {t.accountId && <span className="text-xs text-slate-400 mt-1">{accounts.find(a => a.id === t.accountId)?.name}</span>}
-                                        </div>
-                                        <div className={`font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                             {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex justify-between items-center mt-1">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${t.transferId ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
-                                            {t.transferId ? 'Transferência' : (category?.name || 'Sem Categoria')}
-                                            {subcategory && <span className="opacity-60 ml-1">/ {subcategory.name}</span>}
-                                        </span>
-                                        
-                                        <div className="flex gap-2">
-                                            {!t.transferId && (
-                                                <button onClick={() => handleEditTransaction(t)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-violet-50 active:text-violet-600"><PencilIcon className="w-4 h-4"/></button>
-                                            )}
-                                            <button onClick={() => deleteTransaction(t.id)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-rose-50 active:text-rose-600"><TrashIcon className="w-4 h-4"/></button>
-                                        </div>
-                                    </div>
+                                 <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-slate-400 text-center px-4">
+                                    <SearchIcon className="w-10 h-10 text-slate-300 mb-3"/>
+                                    <p className="font-medium">Nenhuma transação encontrada</p>
+                                    <p className="text-xs opacity-70 mt-1">Tente ajustar os filtros.</p>
                                 </div>
-                            );
-                        }) : (
-                             <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-slate-400 text-center px-4">
-                                <SearchIcon className="w-10 h-10 text-slate-300 mb-3"/>
-                                <p className="font-medium">Nenhuma transação encontrada</p>
-                                <p className="text-xs opacity-70 mt-1">Tente ajustar os filtros.</p>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
