@@ -417,7 +417,7 @@ type ReviewedXLSXTransaction = ParsedXLSXTransaction & {
 
 const App: React.FC = () => {
     const { isAuthenticated, user, logout } = useAuth();
-    const { theme } = useTheme();
+    const { theme, toggleTheme } = useTheme();
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
     const [preselectedAccountId, setPreselectedAccountId] = useState<string | null>(null);
 
@@ -944,6 +944,18 @@ const App: React.FC = () => {
                 </nav>
                 
                 <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                    <button
+                        onClick={toggleTheme}
+                        className={`flex items-center p-3 rounded-xl w-full text-left transition-all duration-200 group ${isSidebarOpen ? '' : 'justify-center'} text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800`}
+                        title={theme === 'light' ? "Modo Escuro" : "Modo Claro"}
+                    >
+                         <div className={`w-5 h-5 transition-transform duration-200 ${!isSidebarOpen && 'group-hover:scale-110'}`}>
+                            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+                         </div>
+                        <span className={`ml-4 font-medium whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 sr-only'}`}>
+                            {theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
+                        </span>
+                    </button>
                     <button
                         onClick={logout}
                         className={`flex items-center p-3 rounded-xl w-full text-left transition-all duration-200 group ${isSidebarOpen ? '' : 'justify-center'} text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20`}
