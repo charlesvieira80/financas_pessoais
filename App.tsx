@@ -943,7 +943,15 @@ const App: React.FC = () => {
                     </ul>
                 </nav>
                 
-                <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                    <button
+                        onClick={logout}
+                        className={`flex items-center p-3 rounded-xl w-full text-left transition-all duration-200 group ${isSidebarOpen ? '' : 'justify-center'} text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20`}
+                        title="Sair"
+                    >
+                         <LogoutIcon className={`w-5 h-5 transition-transform duration-200 ${!isSidebarOpen && 'group-hover:scale-110'}`} />
+                        <span className={`ml-4 font-medium whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 sr-only'}`}>Sair</span>
+                    </button>
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                         className="flex items-center p-3 rounded-xl w-full text-left transition-colors text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
