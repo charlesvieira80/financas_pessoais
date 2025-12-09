@@ -235,8 +235,7 @@ const StatementView: React.FC<StatementViewProps> = ({
                                                                 <div className="flex gap-1">
                                                                     <button 
                                                                         onClick={() => handleEditTransaction(t)} 
-                                                                        disabled={!!t.transferId} 
-                                                                        className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                        className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
                                                                         aria-label="Editar transação"
                                                                     >
                                                                         <PencilIcon className="w-4 h-4"/>

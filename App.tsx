@@ -523,6 +523,102 @@ const TransferForm: React.FC<{
     );
 };
 
+const EditTransferForm: React.FC<{
+    accounts: Account[];
+    transactions: Transaction[];
+    editingTransfer: Transaction;
+    onSave: (data: {
+        fromAccountId: string;
+        toAccountId: string;
+        amount: number;
+        date: string;
+        description: string;
+    }) => void;
+    onClose: () => void;
+}> = ({ accounts, transactions, editingTransfer, onSave, onClose }) => {
+    const [fromAccountId, setFromAccountId] = useState('');
+    const [toAccountId, setToAccountId] = useState('');
+    const [amount, setAmount] = useState(0);
+    const [date, setDate] = useState('');
+    const [description, setDescription] = useState('');
+    
+    const baseInputClass = "w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-shadow outline-none";
+    const labelClass = "block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5";
+
+    useEffect(() => {
+        if (!editingTransfer || !editingTransfer.transferId) return;
+
+        const related = transactions.filter(t => t.transferId === editingTransfer.transferId);
+        const expensePart = related.find(t => t.type === TransactionType.EXPENSE);
+        const incomePart = related.find(t => t.type === TransactionType.INCOME);
+
+        if (!expensePart || !incomePart) return;
+
+        setFromAccountId(expensePart.accountId);
+        setToAccountId(incomePart.accountId);
+        setAmount(expensePart.amount);
+        setDate(expensePart.date.split('T')[0]);
+
+        const descRegex = /^Transferência (?:para|de) .*?(?:: (.*))?$/;
+        const match = expensePart.description.match(descRegex);
+        if (match && match[1]) {
+            setDescription(match[1]);
+        } else {
+            setDescription('');
+        }
+    }, [editingTransfer, transactions]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (fromAccountId === toAccountId) {
+            alert("A conta de origem e destino não podem ser a mesma.");
+            return;
+        }
+        onSave({ fromAccountId, toAccountId, amount: +amount, date, description });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 pb-32">
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className={labelClass}>De (Origem)</label>
+                    <select value={fromAccountId} onChange={e => setFromAccountId(e.target.value)} required className={baseInputClass}>
+                        <option value="">Selecione...</option>
+                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className={labelClass}>Para (Destino)</label>
+                    <select value={toAccountId} onChange={e => setToAccountId(e.target.value)} required className={baseInputClass}>
+                        <option value="">Selecione...</option>
+                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                    </select>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className={labelClass}>Valor</label>
+                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required min="0.01" className={baseInputClass}/>
+                </div>
+                 <div>
+                    <label className={labelClass}>Data</label>
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className={baseInputClass}/>
+                </div>
+            </div>
+           
+             <div>
+                <label className={labelClass}>Observação (Opcional)</label>
+                <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
+            </div>
+
+            {/* FOOTER ACTIONS */}
+            <div className="-mx-6 md:-mx-8 px-6 pt-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6">
+                <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
+                <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar Alterações</button>
+            </div>
+        </form>
+    );
+};
 
 
 interface ImportTransaction extends ParsedTransaction {
@@ -565,6 +661,8 @@ const App: React.FC = () => {
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [isEditTransferModalOpen, setIsEditTransferModalOpen] = useState(false);
+    const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
     const [isEditScopeModalOpen, setIsEditScopeModalOpen] = useState(false);
@@ -745,6 +843,12 @@ const App: React.FC = () => {
         setIsTransferModalOpen(true);
     };
     const handleEditTransaction = (transaction: Transaction) => {
+        if (transaction.transferId) {
+            setEditingTransfer(transaction);
+            setIsEditTransferModalOpen(true);
+            return;
+        }
+
         const isInstallment = / \(\d+\/\d+\)$/.test(transaction.description);
         setEditingTransaction(transaction);
         if (isInstallment) {
@@ -922,6 +1026,69 @@ const App: React.FC = () => {
 
         setIsTransferModalOpen(false);
         setPreselectedData({});
+    };
+
+    const handleSaveEditedTransfer = async (data: {
+        fromAccountId: string;
+        toAccountId: string;
+        amount: number;
+        date: string;
+        description: string;
+    }) => {
+        if (!editingTransfer || !editingTransfer.transferId) {
+            console.error("No transfer is being edited.");
+            return;
+        }
+        if (!db) return;
+
+        const transferId = editingTransfer.transferId;
+        const relatedTransactions = transactions.filter(t => t.transferId === transferId);
+
+        if (relatedTransactions.length !== 2) {
+            alert("Erro: não foi possível encontrar as duas partes da transferência para editar.");
+            return;
+        }
+        
+        const fromAccount = accounts.find(a => a.id === data.fromAccountId);
+        const toAccount = accounts.find(a => a.id === data.toAccountId);
+        if (!fromAccount || !toAccount) {
+            alert("Erro: Conta de origem ou destino inválida.");
+            return;
+        }
+
+        const expensePart = relatedTransactions.find(t => t.type === TransactionType.EXPENSE);
+        const incomePart = relatedTransactions.find(t => t.type === TransactionType.INCOME);
+
+        if (!expensePart || !incomePart) {
+             alert("Erro: não foi possível identificar as transações de entrada e saída.");
+             return;
+        }
+
+        const [year, month, day] = data.date.split('-').map(Number);
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        
+        const batch = writeBatch(db);
+
+        const expenseRef = doc(db, 'transactions', expensePart.id);
+        batch.update(expenseRef, {
+            accountId: data.fromAccountId,
+            amount: data.amount,
+            date: utcDate.toISOString(),
+            description: `Transferência para ${toAccount.name}${data.description ? `: ${data.description}` : ''}`
+        });
+
+        const incomeRef = doc(db, 'transactions', incomePart.id);
+        batch.update(incomeRef, {
+            accountId: data.toAccountId,
+            amount: data.amount,
+            date: utcDate.toISOString(),
+            description: `Transferência de ${fromAccount.name}${data.description ? `: ${data.description}` : ''}`
+        });
+        
+        await batch.commit();
+
+        setIsEditTransferModalOpen(false);
+        setEditingTransfer(null);
     };
 
     const handleSaveInstallments = (data: {
@@ -1240,6 +1407,18 @@ const App: React.FC = () => {
                     preselectedData={preselectedData}
                 />
             </Modal>
+
+            {editingTransfer && (
+                <Modal isOpen={isEditTransferModalOpen} onClose={() => { setIsEditTransferModalOpen(false); setEditingTransfer(null); }} title="Editar Transferência">
+                    <EditTransferForm
+                        accounts={accounts}
+                        transactions={transactions}
+                        editingTransfer={editingTransfer}
+                        onSave={handleSaveEditedTransfer}
+                        onClose={() => { setIsEditTransferModalOpen(false); setEditingTransfer(null); }}
+                    />
+                </Modal>
+            )}
 
             <Modal isOpen={isInstallmentModalOpen} onClose={() => { setIsInstallmentModalOpen(false); setPreselectedData({}); }} title="Lançar Compra Parcelada">
                 <InstallmentForm 

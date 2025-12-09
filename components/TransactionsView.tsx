@@ -302,7 +302,7 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                                             </td>
                                             <td className="p-5">
                                                 <div className="flex justify-center items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => handleEditTransaction(t)} disabled={!!t.transferId} className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4"/></button>
+                                                    <button onClick={() => handleEditTransaction(t)} className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors cursor-pointer"><PencilIcon className="w-4 h-4"/></button>
                                                     <button onClick={() => deleteTransaction(t.id)} className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"><TrashIcon className="w-4 h-4"/></button>
                                                 </div>
                                             </td>
@@ -349,9 +349,7 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                                             </span>
                                             
                                             <div className="flex gap-2">
-                                                {!t.transferId && (
-                                                    <button onClick={() => handleEditTransaction(t)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-violet-50 active:text-violet-600"><PencilIcon className="w-4 h-4"/></button>
-                                                )}
+                                                <button onClick={() => handleEditTransaction(t)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-violet-50 active:text-violet-600"><PencilIcon className="w-4 h-4"/></button>
                                                 <button onClick={() => deleteTransaction(t.id)} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg active:bg-rose-50 active:text-rose-600"><TrashIcon className="w-4 h-4"/></button>
                                             </div>
                                         </div>
