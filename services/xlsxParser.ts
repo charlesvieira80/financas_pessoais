@@ -35,18 +35,21 @@ export const parseXLSX = (xlsxContent: ArrayBuffer): ParsedXLSXTransaction[] => 
         return null;
     };
 
-    const dateKey = findKey(['data ocorrência', 'data']);
-    const descKey = findKey(['descrição', 'descricao', 'description']);
+    const dateKey = findKey(['data ocorrência', 'data', 'dt. movimento']);
+    const descKey = findKey(['descrição', 'descricao', 'description', 'histórico', 'historico']);
     const valueKey = findKey(['valor', 'value', 'amount']);
     const catKey = findKey(['categoria', 'category']);
     const accKey = findKey(['conta', 'account']);
+    const natureKey = findKey(['natureza', 'nature', 'tipo', 'type']);
 
     const missing = [];
     if (!dateKey) missing.push('Data');
-    if (!descKey) missing.push('Descrição');
+    if (!descKey) missing.push('Descrição/Histórico');
     if (!valueKey) missing.push('Valor');
-    if (!catKey) missing.push('Categoria');
-    if (!accKey) missing.push('Conta');
+    
+    // Categoria e Conta agora são opcionais
+    // if (!catKey) missing.push('Categoria');
+    // if (!accKey) missing.push('Conta');
 
     if (missing.length > 0) {
         alert(`As seguintes colunas obrigatórias não foram encontradas na planilha: ${missing.join(', ')}.`);
@@ -68,7 +71,10 @@ export const parseXLSX = (xlsxContent: ArrayBuffer): ParsedXLSXTransaction[] => 
             continue; // Skip rows missing essential data
         }
         
-        const valor = parseFloat(String(valorRaw).replace(',', '.'));
+        // Remove currency symbols and handle comma decimals if string
+        const valorString = String(valorRaw).replace(/[R$\s]/g, '').replace(',', '.');
+        const valor = parseFloat(valorString);
+        
         if (isNaN(valor)) {
             continue; // Skip invalid rows
         }
@@ -93,14 +99,33 @@ export const parseXLSX = (xlsxContent: ArrayBuffer): ParsedXLSXTransaction[] => 
         // ...and then create a new Date object at midnight UTC for that specific day.
         date = new Date(Date.UTC(year, month, day));
         
+        // Determine Transaction Type
+        let type: TransactionType;
+        const absAmount = Math.abs(valor);
+
+        if (natureKey && row[natureKey]) {
+            const nature = String(row[natureKey]).toLowerCase();
+            if (nature.includes('crédito') || nature.includes('credito') || nature.includes('receita') || nature === 'c') {
+                type = TransactionType.INCOME;
+            } else if (nature.includes('débito') || nature.includes('debito') || nature.includes('despesa') || nature === 'd') {
+                type = TransactionType.EXPENSE;
+            } else {
+                // If nature is present but unclear, fallback to value sign
+                type = valor >= 0 ? TransactionType.INCOME : TransactionType.EXPENSE;
+            }
+        } else {
+            // Default behavior based on sign
+            type = valor >= 0 ? TransactionType.INCOME : TransactionType.EXPENSE;
+        }
+
         transactions.push({
             key: crypto.randomUUID(),
             date: date.toISOString(),
             description: String(descValue).trim(),
-            amount: Math.abs(valor),
-            type: valor >= 0 ? TransactionType.INCOME : TransactionType.EXPENSE,
-            categoryFullName: String(row[catKey!] || '').trim(),
-            accountName: String(row[accKey!] || '').trim(),
+            amount: absAmount,
+            type: type,
+            categoryFullName: catKey ? String(row[catKey] || '').trim() : '',
+            accountName: accKey ? String(row[accKey] || '').trim() : '',
         });
     }
 

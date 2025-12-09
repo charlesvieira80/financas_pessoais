@@ -20,6 +20,7 @@ interface TransactionsViewProps {
   addAccount: (account: Omit<Account, 'id'>) => Account;
   addCategory: (category: Omit<Category, 'id'>) => Category;
   addSubcategory: (subcategory: Omit<Subcategory, 'id'>) => Subcategory;
+  onImportTransactions: (transactions: Omit<Transaction, 'id'>[]) => void;
 }
 
 interface ImportTransaction extends ParsedTransaction {
@@ -46,7 +47,8 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
     deleteTransaction, 
     handleEditTransaction,
     handleOpenInstallmentModal,
-    handleOpenTransferModal 
+    handleOpenTransferModal,
+    onImportTransactions
 }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +56,6 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
     const [filterCategoryId, setFilterCategoryId] = useState('');
     
     // OFX/XLSX import states remain here for now as they are specific to this view's buttons
-    // In a future refactor, these could also be lifted if other views need them.
     const [isImportingOFX, setIsImportingOFX] = useState(false);
     const ofxFileInputRef = useRef<HTMLInputElement>(null);
     const [isImportingXLSX, setIsImportingXLSX] = useState(false);
@@ -98,13 +99,75 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
     });
     
     const handleOFXFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        // This logic could be lifted to App.tsx and passed as a prop
-        // For now, it stays here but will trigger modals controlled by App.tsx
-        alert("Função de importação OFX está sendo refatorada.");
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validation removed to allow import without pre-selecting filter
+        setIsImportingOFX(true);
+        try {
+            const text = await file.text();
+            const parsedTransactions = parseOFX(text);
+            
+            if (parsedTransactions.length === 0) {
+                alert("Nenhuma transação encontrada ou formato inválido.");
+                return;
+            }
+
+            const transactionsToImport: Omit<Transaction, 'id'>[] = parsedTransactions.map(pt => ({
+                description: pt.description,
+                amount: pt.amount,
+                date: pt.date,
+                type: pt.type,
+                accountId: filterAccountId || '', // Pass empty if no filter selected, will be handled in Modal
+                categoryId: '',
+                subcategoryId: ''
+            }));
+
+            onImportTransactions(transactionsToImport);
+
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao importar OFX. Verifique se o arquivo é válido.");
+        } finally {
+             setIsImportingOFX(false);
+             if (ofxFileInputRef.current) ofxFileInputRef.current.value = '';
+        }
     };
     
-    const handleXLSXFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        alert("Função de importação XLSX está sendo refatorada.");
+    const handleXLSXFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validation removed to allow import without pre-selecting filter
+        setIsImportingXLSX(true);
+        try {
+            const buffer = await file.arrayBuffer();
+            const parsedTransactions = parseXLSX(buffer);
+
+            if (parsedTransactions.length === 0) {
+                // parseXLSX already alerts on empty/invalid
+                return;
+            }
+
+            const transactionsToImport: Omit<Transaction, 'id'>[] = parsedTransactions.map(pt => ({
+                description: pt.description,
+                amount: pt.amount,
+                date: pt.date,
+                type: pt.type,
+                accountId: filterAccountId || '', // Pass empty if no filter selected, will be handled in Modal
+                categoryId: '', 
+                subcategoryId: ''
+            }));
+
+            onImportTransactions(transactionsToImport);
+
+        } catch (e) {
+             console.error(e);
+             alert("Erro crítico ao processar planilha.");
+        } finally {
+            setIsImportingXLSX(false);
+            if (xlsxFileInputRef.current) xlsxFileInputRef.current.value = '';
+        }
     }
 
     return (

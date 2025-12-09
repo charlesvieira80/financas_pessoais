@@ -16,6 +16,8 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { suggestCategory } from './services/geminiService';
 import { parseOFX, ParsedTransaction } from './services/ofxParser';
 import { parseXLSX, ParsedXLSXTransaction } from './services/xlsxParser';
+import { formatCurrency, formatDate } from './utils';
+
 // Firebase Imports
 import { db } from './services/firebase';
 import {
@@ -30,7 +32,127 @@ import {
     writeBatch
 } from 'firebase/firestore';
 
-// --- FORMS AND MODALS (Moved from TransactionsView) ---
+// --- COMPONENTS ---
+
+const ImportReviewModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    transactions: Transaction[];
+    accounts: Account[];
+    onRemove: (id: string) => void;
+    onEdit: (transaction: Transaction) => void;
+    onConfirm: (targetAccountId: string) => void;
+    isSaving: boolean;
+}> = ({ isOpen, onClose, transactions, accounts, onRemove, onEdit, onConfirm, isSaving }) => {
+    const [targetAccountId, setTargetAccountId] = useState('');
+    const totalAmount = transactions.reduce((acc, t) => t.type === TransactionType.INCOME ? acc + t.amount : acc - t.amount, 0);
+    
+    // Auto-select first account if available and none selected
+    useEffect(() => {
+        if (isOpen && accounts.length > 0 && !targetAccountId) {
+            // Try to find if incoming transactions have a common accountId (passed from view filter)
+            const commonId = transactions[0]?.accountId;
+            if (commonId && accounts.some(a => a.id === commonId)) {
+                setTargetAccountId(commonId);
+            } else {
+                setTargetAccountId(accounts[0].id);
+            }
+        }
+    }, [isOpen, accounts]);
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Revisar Importação (${transactions.length})`} size="3xl">
+            <div className="flex flex-col h-full max-h-[70vh]">
+                <div className="mb-4 space-y-4">
+                    <div className="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-100 dark:border-violet-900/30 flex justify-between items-center">
+                        <p className="text-sm text-violet-800 dark:text-violet-200">
+                            Verifique os dados abaixo. Você pode excluir transações indesejadas ou editá-las.
+                        </p>
+                        <div className="text-right">
+                            <p className="text-xs uppercase font-bold text-violet-500">Saldo da Importação</p>
+                            <p className={`font-bold ${totalAmount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {totalAmount >= 0 ? '+' : ''}{formatCurrency(totalAmount)}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Importar para a Conta:</label>
+                        <select 
+                            value={targetAccountId} 
+                            onChange={(e) => setTargetAccountId(e.target.value)}
+                            className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 outline-none transition-all"
+                        >
+                            <option value="" disabled>Selecione uma conta...</option>
+                            {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="flex-grow overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10">
+                            <tr>
+                                <th className="p-3 font-semibold text-slate-600 dark:text-slate-300">Data</th>
+                                <th className="p-3 font-semibold text-slate-600 dark:text-slate-300">Descrição</th>
+                                <th className="p-3 font-semibold text-slate-600 dark:text-slate-300 text-right">Valor</th>
+                                <th className="p-3 font-semibold text-slate-600 dark:text-slate-300 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {transactions.map((t) => (
+                                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                    <td className="p-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{formatDate(t.date)}</td>
+                                    <td className="p-3 text-slate-800 dark:text-slate-200">{t.description}</td>
+                                    <td className={`p-3 text-right font-medium ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <div className="flex justify-center gap-2">
+                                            <button onClick={() => onEdit(t)} className="p-1.5 text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors" title="Editar">
+                                                <PencilIcon className="w-4 h-4"/>
+                                            </button>
+                                            <button onClick={() => onRemove(t.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors" title="Remover">
+                                                <TrashIcon className="w-4 h-4"/>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button 
+                        onClick={onClose} 
+                        className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        disabled={isSaving}
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={() => onConfirm(targetAccountId)} 
+                        disabled={isSaving || transactions.length === 0 || !targetAccountId}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSaving ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Salvando...
+                            </>
+                        ) : (
+                            <>
+                                <UploadIcon className="w-5 h-5" />
+                                Confirmar Importação
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
 
 const TransactionForm: React.FC<{
     transaction?: Transaction | null;
@@ -432,7 +554,11 @@ const App: React.FC = () => {
     // --- NAVIGATION STATE ---
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+    
+    // --- IMPORT QUEUE STATE (REPLACED WITH PENDING LIST) ---
+    const [pendingImports, setPendingImports] = useState<Transaction[]>([]);
+    const [isImportReviewModalOpen, setIsImportReviewModalOpen] = useState(false);
+    const [isSavingImports, setIsSavingImports] = useState(false);
 
     // --- MODAL STATE (Centralized) ---
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -634,62 +760,118 @@ const App: React.FC = () => {
         setPreselectedData({});
     }
 
+    // --- IMPORT LOGIC ---
+    const handleImportTransactions = (data: Omit<Transaction, 'id'>[]) => {
+        if (data.length === 0) return;
+        // Generate temp IDs for local management
+        const transactionsWithTempIds = data.map(t => ({
+            ...t,
+            id: `temp_${crypto.randomUUID()}`
+        })) as Transaction[];
+        
+        setPendingImports(transactionsWithTempIds);
+        setIsImportReviewModalOpen(true);
+    };
+
+    const handleRemovePendingImport = (id: string) => {
+        setPendingImports(prev => prev.filter(t => t.id !== id));
+    };
+
+    const handleEditPendingImport = (transaction: Transaction) => {
+        setEditingTransaction(transaction);
+        setIsTransactionModalOpen(true);
+        // Note: ImportReviewModal stays open in the background (visual stack) or we can close it. 
+        // For better UX on mobile, let's keep it "open" state-wise, but the TransactionModal will cover it.
+    };
+
+    const handleConfirmImport = async (targetAccountId: string) => {
+        if (!targetAccountId) return;
+        setIsSavingImports(true);
+        try {
+            for (const t of pendingImports) {
+                const { id, ...cleanData } = t; // Remove temp ID
+                // Override accountId with the selected one in the modal
+                await addTransaction({
+                    ...cleanData,
+                    accountId: targetAccountId
+                });
+            }
+            setPendingImports([]);
+            setIsImportReviewModalOpen(false);
+        } catch (e) {
+            console.error("Error saving imports", e);
+            alert("Ocorreu um erro ao salvar algumas transações.");
+        } finally {
+            setIsSavingImports(false);
+        }
+    };
+
     const handleSaveTransaction = (transactionData: Omit<Transaction, 'id'> | Transaction) => {
-        if (!('id' in transactionData)) {
-            addTransaction(transactionData);
+        // Check if we are editing a pending import (temp ID)
+        if ('id' in transactionData && transactionData.id.startsWith('temp_')) {
+            // Update the pending list instead of saving to Firestore
+            setPendingImports(prev => prev.map(t => t.id === transactionData.id ? (transactionData as Transaction) : t));
             handleCloseTransactionModal();
             return;
         }
 
-        const updatedTransaction = transactionData as Transaction;
+        const isRealUpdate = 'id' in transactionData;
 
-        if (editScope === 'future' && editingTransaction) {
-            const installmentRegex = /^(.*?) \((\d+)\/(\d+)\)$/;
-            const originalMatch = editingTransaction.description.match(installmentRegex);
+        if (isRealUpdate) {
+            const updatedTransaction = transactionData as Transaction;
+            if (editScope === 'future' && editingTransaction) {
+                 // ... (lógica de edição parcelada existente mantida)
+                const installmentRegex = /^(.*?) \((\d+)\/(\d+)\)$/;
+                const originalMatch = editingTransaction.description.match(installmentRegex);
 
-            if (originalMatch) {
-                const baseDescription = originalMatch[1];
-                const currentInstallmentNum = parseInt(originalMatch[2], 10);
-                
-                const transactionsToUpdate = transactions
-                    .filter(t => {
-                        const tMatch = t.description.match(installmentRegex);
-                        if (!tMatch) return false;
-                        const tBaseDescription = tMatch[1];
-                        const tInstallmentNum = parseInt(tMatch[2], 10);
-                        return tBaseDescription === baseDescription && tInstallmentNum >= currentInstallmentNum;
-                    })
-                    .sort((a, b) => {
-                         const aNum = parseInt(a.description.match(installmentRegex)![2], 10);
-                         const bNum = parseInt(b.description.match(installmentRegex)![2], 10);
-                         return aNum - bNum;
+                if (originalMatch) {
+                    const baseDescription = originalMatch[1];
+                    const currentInstallmentNum = parseInt(originalMatch[2], 10);
+                    
+                    const transactionsToUpdate = transactions
+                        .filter(t => {
+                            const tMatch = t.description.match(installmentRegex);
+                            if (!tMatch) return false;
+                            const tBaseDescription = tMatch[1];
+                            const tInstallmentNum = parseInt(tMatch[2], 10);
+                            return tBaseDescription === baseDescription && tInstallmentNum >= currentInstallmentNum;
+                        })
+                        .sort((a, b) => {
+                             const aNum = parseInt(a.description.match(installmentRegex)![2], 10);
+                             const bNum = parseInt(b.description.match(installmentRegex)![2], 10);
+                             return aNum - bNum;
+                        });
+                    
+                    const newStartDate = new Date(updatedTransaction.date);
+                    const newBaseDescriptionMatch = updatedTransaction.description.match(installmentRegex);
+                    const newBaseDescription = newBaseDescriptionMatch ? newBaseDescriptionMatch[1] : updatedTransaction.description;
+
+                    transactionsToUpdate.forEach((tToUpdate, index) => {
+                        const tMatch = tToUpdate.description.match(installmentRegex)!;
+                        const nextDate = new Date(newStartDate);
+                        nextDate.setUTCMonth(nextDate.getUTCMonth() + index);
+
+                        const updated = {
+                            ...tToUpdate,
+                            date: nextDate.toISOString(),
+                            amount: updatedTransaction.amount,
+                            description: `${newBaseDescription} (${tMatch[2]}/${tMatch[3]})`,
+                            accountId: updatedTransaction.accountId,
+                            categoryId: updatedTransaction.categoryId,
+                            subcategoryId: updatedTransaction.subcategoryId,
+                        };
+                        updateTransaction(updated);
                     });
-                
-                const newStartDate = new Date(updatedTransaction.date);
-                const newBaseDescriptionMatch = updatedTransaction.description.match(installmentRegex);
-                const newBaseDescription = newBaseDescriptionMatch ? newBaseDescriptionMatch[1] : updatedTransaction.description;
-
-                transactionsToUpdate.forEach((tToUpdate, index) => {
-                    const tMatch = tToUpdate.description.match(installmentRegex)!;
-                    const nextDate = new Date(newStartDate);
-                    nextDate.setUTCMonth(nextDate.getUTCMonth() + index);
-
-                    const updated = {
-                        ...tToUpdate,
-                        date: nextDate.toISOString(),
-                        amount: updatedTransaction.amount,
-                        description: `${newBaseDescription} (${tMatch[2]}/${tMatch[3]})`,
-                        accountId: updatedTransaction.accountId,
-                        categoryId: updatedTransaction.categoryId,
-                        subcategoryId: updatedTransaction.subcategoryId,
-                    };
-                    updateTransaction(updated);
-                });
+                } else {
+                     updateTransaction(updatedTransaction);
+                }
             } else {
-                 updateTransaction(updatedTransaction);
+                updateTransaction(updatedTransaction);
             }
         } else {
-            updateTransaction(updatedTransaction);
+            // Novo registro
+            const { id, ...dataToSave } = transactionData as any;
+            addTransaction(dataToSave);
         }
 
         handleCloseTransactionModal();
@@ -842,6 +1024,7 @@ const App: React.FC = () => {
             handleEditTransaction,
             handleOpenInstallmentModal,
             handleOpenTransferModal,
+            onImportTransactions: handleImportTransactions,
         };
 
         const statementViewProps = {
@@ -1021,6 +1204,21 @@ const App: React.FC = () => {
                  </div>
              </Modal>
 
+
+            {/* REVIEW IMPORT MODAL */}
+            <ImportReviewModal 
+                isOpen={isImportReviewModalOpen}
+                onClose={() => {
+                    setIsImportReviewModalOpen(false);
+                    setPendingImports([]);
+                }}
+                transactions={pendingImports}
+                accounts={accounts}
+                onRemove={handleRemovePendingImport}
+                onEdit={handleEditPendingImport}
+                onConfirm={handleConfirmImport}
+                isSaving={isSavingImports}
+            />
 
             <Modal isOpen={isTransactionModalOpen} onClose={handleCloseTransactionModal} title={editingTransaction ? "Editar Transação" : "Nova Transação"}>
                 <TransactionForm 
