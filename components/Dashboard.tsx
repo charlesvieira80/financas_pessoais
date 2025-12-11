@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Transaction, Category, Account, TransactionType, Subcategory, ActiveView } from '../types';
 import { formatCurrency, formatMonthYear } from '../utils';
 import { getFinancialInsights } from '../services/geminiService';
-import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from './shared/icons';
+import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon, FilterIcon, XIcon } from './shared/icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 
@@ -26,6 +26,26 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
     const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     
+    // Filter State
+    const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const filterRef = useRef<HTMLDivElement>(null);
+
+    // Click outside to close filter menu
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+                setIsFilterOpen(false);
+            }
+        };
+        if (isFilterOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isFilterOpen]);
+
     const gridColor = theme === 'dark' ? '#334155' : '#e2e8f0';
     const textColor = theme === 'dark' ? '#94a3b8' : '#64748b';
     const tooltipBg = theme === 'dark' ? '#1e293b' : '#ffffff';
@@ -48,6 +68,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         });
     };
     
+    const toggleCategoryFilter = (categoryId: string) => {
+        setHiddenCategoryIds(prev => {
+            if (prev.includes(categoryId)) {
+                return prev.filter(id => id !== categoryId);
+            } else {
+                return [...prev, categoryId];
+            }
+        });
+    };
+
+    const clearFilters = () => {
+        setHiddenCategoryIds([]);
+    };
+
+    // 1. Filter by Date
     const filteredTransactionsByDate = useMemo(() => {
         return transactions.filter(t => {
             const tDate = new Date(t.date);
@@ -58,9 +93,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         });
     }, [transactions, currentDate, viewMode]);
 
+    // 2. Filter by Category (Hidden IDs)
+    // This filtered list is used for Charts and Insights
+    const filteredTransactionsVisible = useMemo(() => {
+        if (hiddenCategoryIds.length === 0) return filteredTransactionsByDate;
+        return filteredTransactionsByDate.filter(t => !t.categoryId || !hiddenCategoryIds.includes(t.categoryId));
+    }, [filteredTransactionsByDate, hiddenCategoryIds]);
+
     const nonTransferTransactions = useMemo(() => {
-        return filteredTransactionsByDate.filter(t => !t.transferId);
-    }, [filteredTransactionsByDate]);
+        return filteredTransactionsVisible.filter(t => !t.transferId);
+    }, [filteredTransactionsVisible]);
     
     const dailyData = useMemo(() => {
         if (viewMode !== 'monthly') return [];
@@ -139,6 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         }
     }, [nonTransferTransactions, categories, subcategories, selectedCategoryId]);
     
+    // Total Balance Logic - Should NOT be affected by Category Filters to maintain Account Reality
     const totalBalance = useMemo(() => {
         const initialBalances = accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
         
@@ -215,33 +258,99 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
 
     return (
         <div className="p-4 md:p-10 max-w-7xl mx-auto" {...swipeHandlers}>
-            <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6 md:mb-8">
+            <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-6 md:mb-8">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Financeiro</h1>
                     <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Visão geral do seu patrimônio e movimentações.</p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white dark:bg-slate-900 p-2 md:p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 w-full lg:w-auto">
-                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-full sm:w-auto">
-                        <button onClick={() => setViewMode('monthly')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'monthly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Mensal</button>
-                        <button onClick={() => setViewMode('yearly')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'yearly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Anual</button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+                    {/* Date Navigation & View Mode */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white dark:bg-slate-900 p-2 md:p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 w-full xl:w-auto">
+                        <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-full sm:w-auto">
+                            <button onClick={() => setViewMode('monthly')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'monthly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Mensal</button>
+                            <button onClick={() => setViewMode('yearly')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'yearly' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>Anual</button>
+                        </div>
+
+                        <div className="h-px w-full sm:h-6 sm:w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-1"></div>
+
+                        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+                            {viewMode === 'monthly' ? (
+                                <>
+                                    <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
+                                    <span className="text-sm font-bold w-32 text-center text-slate-700 dark:text-slate-200">{formatMonthYear(currentDate)}</span>
+                                    <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon className="w-5 h-5" /></button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={() => changeYear(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
+                                    <span className="text-sm font-bold w-20 text-center text-slate-700 dark:text-slate-200">{currentDate.getFullYear()}</span>
+                                    <button onClick={() => changeYear(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon className="w-5 h-5" /></button>
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="h-px w-full sm:h-6 sm:w-px bg-slate-200 dark:bg-slate-700 hidden sm:block mx-1"></div>
+                    {/* Filter Button */}
+                    <div className="relative z-20" ref={filterRef}>
+                        <button 
+                            onClick={() => setIsFilterOpen(!isFilterOpen)} 
+                            className={`flex items-center justify-center gap-2 p-3.5 sm:px-5 rounded-2xl border font-semibold transition-all w-full sm:w-auto h-full ${
+                                isFilterOpen || hiddenCategoryIds.length > 0
+                                ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30' 
+                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            }`}
+                        >
+                            <FilterIcon className="w-5 h-5" />
+                            <span className="hidden sm:inline">Categorias</span>
+                            {hiddenCategoryIds.length > 0 && (
+                                <span className="flex items-center justify-center w-5 h-5 bg-white text-violet-600 rounded-full text-xs font-bold">
+                                    {categories.length - hiddenCategoryIds.length}
+                                </span>
+                            )}
+                        </button>
 
-                    <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
-                        {viewMode === 'monthly' ? (
-                            <>
-                                <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
-                                <span className="text-sm font-bold w-32 text-center text-slate-700 dark:text-slate-200">{formatMonthYear(currentDate)}</span>
-                                <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon className="w-5 h-5" /></button>
-                            </>
-                        ) : (
-                            <>
-                                <button onClick={() => changeYear(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>
-                                <span className="text-sm font-bold w-20 text-center text-slate-700 dark:text-slate-200">{currentDate.getFullYear()}</span>
-                                <button onClick={() => changeYear(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon className="w-5 h-5" /></button>
-                            </>
+                        {/* Dropdown Menu */}
+                        {isFilterOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-content-in origin-top-right">
+                                <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-800 dark:text-white text-sm">Filtrar Visualização</h3>
+                                    {hiddenCategoryIds.length > 0 && (
+                                        <button onClick={clearFilters} className="text-xs font-semibold text-rose-500 hover:text-rose-600">
+                                            Limpar
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="max-h-64 overflow-y-auto p-2">
+                                    {categories.map(cat => (
+                                        <label key={cat.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                                                !hiddenCategoryIds.includes(cat.id) 
+                                                ? 'bg-violet-600 border-violet-600' 
+                                                : 'border-slate-300 dark:border-slate-600'
+                                            }`}>
+                                                {!hiddenCategoryIds.includes(cat.id) && (
+                                                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden" 
+                                                checked={!hiddenCategoryIds.includes(cat.id)}
+                                                onChange={() => toggleCategoryFilter(cat.id)}
+                                            />
+                                            <span className={`text-sm font-medium ${!hiddenCategoryIds.includes(cat.id) ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500 line-through'}`}>
+                                                {cat.name}
+                                            </span>
+                                        </label>
+                                    ))}
+                                    {categories.length === 0 && (
+                                        <p className="text-xs text-center text-slate-400 p-2">Nenhuma categoria encontrada.</p>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -268,6 +377,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                         Atualizado em {endOfPeriodFormatted}
                     </p>
                 </div>
+
+                {hiddenCategoryIds.length > 0 && (
+                     <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-xl text-sm border border-amber-100 dark:border-amber-900/30">
+                        <FilterIcon className="w-4 h-4" />
+                        <span>Visualizando dados parciais. {categories.length - hiddenCategoryIds.length} de {categories.length} categorias selecionadas.</span>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                     {/* Area Chart */}
@@ -431,7 +547,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                     {isLoadingInsights ? (
                                         <p className="animate-pulse">A IA está analisando suas finanças...</p>
                                     ) : nonTransferTransactions.length === 0 && filteredTransactionsByDate.length > 0 ? (
-                                        <p>Apenas transferências detectadas. Mude o período para ver análises de gastos.</p>
+                                        <p>Apenas transferências ou categorias ocultas. Ajuste os filtros para ver análises.</p>
                                     ) : nonTransferTransactions.length > 0 ? (
                                         <p>Clique no botão acima para descobrir oportunidades de economia.</p>
                                     ) : (
