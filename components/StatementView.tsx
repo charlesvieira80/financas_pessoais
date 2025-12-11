@@ -54,7 +54,9 @@ const StatementView: React.FC<StatementViewProps> = ({
         } else if (accounts.length > 0 && !selectedAccountId) {
             setSelectedAccountId(accounts[0].id);
         }
-    }, [accounts, selectedAccountId, initialAccountId]);
+        // FIX: Removed selectedAccountId from dependencies to prevent locking the selection
+        // when the user tries to change it manually.
+    }, [accounts, initialAccountId]);
     
     const changeMonth = (offset: number) => {
         setCurrentDate(prev => {

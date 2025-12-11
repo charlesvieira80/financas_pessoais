@@ -740,6 +740,13 @@ const App: React.FC = () => {
         }
     }, [user]);
 
+    // Reset preselected account when leaving statement view to ensure fresh selection logic
+    useEffect(() => {
+        if (activeView !== 'statement') {
+            setPreselectedAccountId(null);
+        }
+    }, [activeView]);
+
     // Função para criar dados iniciais no Firestore
     const seedInitialData = async (userId: string) => {
         if (!db) return;
