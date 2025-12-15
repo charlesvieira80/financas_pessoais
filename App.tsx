@@ -159,7 +159,7 @@ const TransactionForm: React.FC<{
     accounts: Account[];
     categories: Category[];
     subcategories: Subcategory[];
-    onSave: (transaction: Omit<Transaction, 'id'> | Transaction) => void;
+    onSave: (transaction: Omit<Transaction, 'id'> | Transaction, keepOpen?: boolean) => void;
     onClose: () => void;
     preselectedData?: { accountId?: string };
 }> = ({ transaction, accounts, categories, subcategories, onSave, onClose, preselectedData }) => {
@@ -172,6 +172,9 @@ const TransactionForm: React.FC<{
     const [subcategoryId, setSubcategoryId] = useState('');
     const [type, setType] = useState(TransactionType.EXPENSE);
     const [isSuggesting, setIsSuggesting] = useState(false);
+    
+    // Ref for description input to auto-focus on "Save and New"
+    const descriptionInputRef = useRef<HTMLInputElement>(null);
     
     const baseInputClass = "w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-shadow outline-none";
     const labelClass = "block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5";
@@ -227,7 +230,7 @@ const TransactionForm: React.FC<{
         setIsSuggesting(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSaveInternal = (e: React.FormEvent | React.MouseEvent, keepOpen: boolean) => {
         e.preventDefault();
         const selectedCategory = categories.find(c => c.id === categoryId);
         if (!selectedCategory && categoryId !== '') return;
@@ -248,16 +251,43 @@ const TransactionForm: React.FC<{
             subcategoryId,
             type: selectedCategory?.type || type
         };
-        onSave(newTransaction);
+        
+        onSave(newTransaction, keepOpen);
+
+        if (keepOpen) {
+            // Reset fields for "New Transaction" flow
+            setBaseDescription('');
+            setAmount(0);
+            setInstallmentPart(null);
+            // Reset categories to force user to select correct one for new entry
+            setCategoryId('');
+            setSubcategoryId('');
+            
+            // NOTE: We deliberately do NOT reset 'accountId' and 'date' 
+            // to fulfill the "Save and New" requirement of keeping them selected.
+            
+            // Focus back on description
+            setTimeout(() => {
+                descriptionInputRef.current?.focus();
+            }, 100);
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5 pb-32">
+        <form onSubmit={(e) => handleSaveInternal(e, false)} className="space-y-5 pb-32">
              <div>
                 <label className={labelClass}>Descrição</label>
                 <div className="flex items-center gap-2">
                     <div className="relative flex-grow">
-                        <input type="text" value={baseDescription} onChange={e => setBaseDescription(e.target.value)} required className={baseInputClass} placeholder="Ex: Compras no Mercado"/>
+                        <input 
+                            ref={descriptionInputRef}
+                            type="text" 
+                            value={baseDescription} 
+                            onChange={e => setBaseDescription(e.target.value)} 
+                            required 
+                            className={baseInputClass} 
+                            placeholder="Ex: Compras no Mercado"
+                        />
                     </div>
                     <button 
                         type="button" 
@@ -340,9 +370,23 @@ const TransactionForm: React.FC<{
                 </div>}
             </div>
 
-            {/* FOOTER ACTIONS - Static relative to form flow */}
-            <div className="-mx-6 md:-mx-8 px-6 pt-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6">
+            {/* FOOTER ACTIONS */}
+            <div className="-mx-6 md:-mx-8 px-6 pt-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6 items-center">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
+                
+                {/* Save and New Button - Only show when creating new transactions */}
+                {!transaction && (
+                    <button 
+                        type="button"
+                        onClick={(e) => handleSaveInternal(e, true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-bold hover:bg-violet-200 dark:hover:bg-violet-900/50 shadow-lg shadow-violet-500/10 transition-all"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">Salvar e Nova</span>
+                        <span className="sm:hidden">+ Nova</span>
+                    </button>
+                )}
+
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
             </div>
         </form>
@@ -949,7 +993,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleSaveTransaction = (transactionData: Omit<Transaction, 'id'> | Transaction) => {
+    const handleSaveTransaction = (transactionData: Omit<Transaction, 'id'> | Transaction, keepOpen: boolean = false) => {
         // Check if we are editing a pending import (temp ID)
         if ('id' in transactionData && transactionData.id.startsWith('temp_')) {
             // Update the pending list instead of saving to Firestore
@@ -1017,8 +1061,10 @@ const App: React.FC = () => {
             addTransaction(dataToSave);
         }
 
-        handleCloseTransactionModal();
-        setEditScope(null);
+        if (!keepOpen) {
+            handleCloseTransactionModal();
+            setEditScope(null);
+        }
     };
 
     const handleSaveTransfer = (data: {
