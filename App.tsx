@@ -16,7 +16,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { suggestCategory } from './services/geminiService';
 import { parseOFX, ParsedTransaction } from './services/ofxParser';
 import { parseXLSX, ParsedXLSXTransaction } from './services/xlsxParser';
-import { formatCurrency, formatDate } from './utils';
+import { formatCurrency, formatDate, formatCurrencyInput, parseCurrencyInput } from './utils';
 
 // Firebase Imports
 import { db } from './services/firebase';
@@ -274,7 +274,15 @@ const TransactionForm: React.FC<{
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className={labelClass}>Valor</label>
-                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required className={baseInputClass} placeholder="0.00"/>
+                    <input 
+                        type="text" 
+                        inputMode="numeric"
+                        value={formatCurrencyInput(amount)} 
+                        onChange={e => setAmount(parseCurrencyInput(e.target.value))} 
+                        required 
+                        className={baseInputClass} 
+                        placeholder="0,00"
+                    />
                 </div>
                 <div>
                     <label className={labelClass}>Data</label>
@@ -398,7 +406,15 @@ const InstallmentForm: React.FC<{
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className={labelClass}>Valor Total</label>
-                    <input type="number" step="0.01" value={totalAmount} onChange={e => setTotalAmount(parseFloat(e.target.value))} required min="0.01" className={baseInputClass}/>
+                    <input 
+                        type="text" 
+                        inputMode="numeric"
+                        value={formatCurrencyInput(totalAmount)} 
+                        onChange={e => setTotalAmount(parseCurrencyInput(e.target.value))} 
+                        required 
+                        className={baseInputClass}
+                        placeholder="0,00"
+                    />
                 </div>
                 <div>
                     <label className={labelClass}>Nº de Parcelas</label>
@@ -501,7 +517,15 @@ const TransferForm: React.FC<{
             <div className="grid grid-cols-2 gap-4">
                  <div>
                     <label className={labelClass}>Valor</label>
-                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required min="0.01" className={baseInputClass}/>
+                    <input 
+                        type="text" 
+                        inputMode="numeric"
+                        value={formatCurrencyInput(amount)} 
+                        onChange={e => setAmount(parseCurrencyInput(e.target.value))} 
+                        required 
+                        className={baseInputClass}
+                        placeholder="0,00"
+                    />
                 </div>
                  <div>
                     <label className={labelClass}>Data</label>
@@ -598,7 +622,15 @@ const EditTransferForm: React.FC<{
             <div className="grid grid-cols-2 gap-4">
                  <div>
                     <label className={labelClass}>Valor</label>
-                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required min="0.01" className={baseInputClass}/>
+                    <input 
+                        type="text" 
+                        inputMode="numeric"
+                        value={formatCurrencyInput(amount)} 
+                        onChange={e => setAmount(parseCurrencyInput(e.target.value))} 
+                        required 
+                        className={baseInputClass}
+                        placeholder="0,00"
+                    />
                 </div>
                  <div>
                     <label className={labelClass}>Data</label>
