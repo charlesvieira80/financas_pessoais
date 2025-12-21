@@ -85,7 +85,7 @@ export const SettingsIcon = ({ className }: { className?: string }) => <svg xmln
 export const DocumentTextIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 export const BalanceIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.88 0-3.615-.653-5.007-1.758M12 20.25c1.88 0 3.615-.653 5.007-1.758M6.993 18.492c-1.85-1.468-2.993-3.68-2.993-6.092 0-3.415 2.275-6.333 5.432-7.233M17.007 18.492c1.85-1.468 2.993-3.68 2.993-6.092 0-3.415-2.275-6.333-5.432-7.233" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM7 21h10M12 3v18M3 7h18" />
     </svg>
 );
 

@@ -154,15 +154,22 @@ const ImportReviewModal: React.FC<{
     );
 };
 
+interface SuggestionItem {
+    description: string;
+    accountName: string;
+    accountId: string;
+}
+
 const TransactionForm: React.FC<{
     transaction?: Transaction | null;
     accounts: Account[];
     categories: Category[];
     subcategories: Subcategory[];
+    allTransactions: Transaction[];
     onSave: (transaction: Omit<Transaction, 'id'> | Transaction, keepOpen?: boolean) => void;
     onClose: () => void;
     preselectedData?: { accountId?: string };
-}> = ({ transaction, accounts, categories, subcategories, onSave, onClose, preselectedData }) => {
+}> = ({ transaction, accounts, categories, subcategories, allTransactions, onSave, onClose, preselectedData }) => {
     const [baseDescription, setBaseDescription] = useState('');
     const [installmentPart, setInstallmentPart] = useState<string | null>(null);
     const [amount, setAmount] = useState(0);
@@ -173,12 +180,27 @@ const TransactionForm: React.FC<{
     const [type, setType] = useState(TransactionType.EXPENSE);
     const [isSuggesting, setIsSuggesting] = useState(false);
     
+    // Autocomplete State
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [descriptionSuggestions, setDescriptionSuggestions] = useState<SuggestionItem[]>([]);
+    const suggestionRef = useRef<HTMLDivElement>(null);
+    
     // Ref for description input to auto-focus on "Save and New"
     const descriptionInputRef = useRef<HTMLInputElement>(null);
     
     const baseInputClass = "w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-shadow outline-none";
     const labelClass = "block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5";
 
+    // Handle clicking outside suggestions
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (transaction) {
@@ -213,6 +235,62 @@ const TransactionForm: React.FC<{
     const filteredCategories = useMemo(() => categories.filter(c => c.type === type), [categories, type]);
     const filteredSubcategories = useMemo(() => subcategories.filter(s => s.categoryId === categoryId), [subcategories, categoryId]);
     
+    const handleDescriptionChange = (val: string) => {
+        setBaseDescription(val);
+        if (val.length >= 2) {
+            // Filter all matching transactions, excluding transfers
+            const matches = allTransactions
+                .filter(t => t.description.toLowerCase().includes(val.toLowerCase()) && !t.transferId)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            // Group by description + accountId to offer precise "templates"
+            const uniqueTemplates: SuggestionItem[] = [];
+            const seen = new Set<string>();
+
+            for (const t of matches) {
+                const cleanDesc = t.description.replace(/\s\(\d+\/\d+\)$/, '');
+                const key = `${cleanDesc.toLowerCase()}-${t.accountId}`;
+                
+                if (!seen.has(key)) {
+                    const acc = accounts.find(a => a.id === t.accountId);
+                    uniqueTemplates.push({
+                        description: cleanDesc,
+                        accountName: acc?.name || 'Conta desconhecida',
+                        accountId: t.accountId
+                    });
+                    seen.add(key);
+                }
+                if (uniqueTemplates.length >= 5) break;
+            }
+
+            setDescriptionSuggestions(uniqueTemplates);
+            setShowSuggestions(uniqueTemplates.length > 0);
+        } else {
+            setShowSuggestions(false);
+        }
+    };
+
+    const selectSuggestion = (suggestion: SuggestionItem) => {
+        setBaseDescription(suggestion.description);
+        setShowSuggestions(false);
+
+        // Smart fill based on the most recent transaction matching this specific description AND account
+        const lastTx = [...allTransactions]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .find(t => 
+                t.description.toLowerCase().startsWith(suggestion.description.toLowerCase()) && 
+                t.accountId === suggestion.accountId
+            );
+
+        if (lastTx) {
+            setAmount(lastTx.amount);
+            setType(lastTx.type);
+            setAccountId(lastTx.accountId);
+            setCategoryId(lastTx.categoryId);
+            setSubcategoryId(lastTx.subcategoryId);
+        }
+    };
+
     const handleSuggestCategory = async () => {
         if (!baseDescription) {
             alert("Por favor, insira uma descrição primeiro.");
@@ -275,7 +353,7 @@ const TransactionForm: React.FC<{
 
     return (
         <form onSubmit={(e) => handleSaveInternal(e, false)} className="space-y-5 pb-32">
-             <div>
+             <div className="relative">
                 <label className={labelClass}>Descrição</label>
                 <div className="flex items-center gap-2">
                     <div className="relative flex-grow">
@@ -283,11 +361,43 @@ const TransactionForm: React.FC<{
                             ref={descriptionInputRef}
                             type="text" 
                             value={baseDescription} 
-                            onChange={e => setBaseDescription(e.target.value)} 
+                            onChange={e => handleDescriptionChange(e.target.value)} 
                             required 
                             className={baseInputClass} 
                             placeholder="Ex: Compras no Mercado"
+                            autoComplete="off"
                         />
+                        {/* SUGGESTIONS DROPDOWN */}
+                        {showSuggestions && (
+                            <div 
+                                ref={suggestionRef}
+                                className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-content-in origin-top"
+                            >
+                                <div className="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sugestões de Histórico</p>
+                                </div>
+                                <div className="max-h-60 overflow-y-auto">
+                                    {descriptionSuggestions.map((suggestion, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => selectSuggestion(suggestion)}
+                                            className="w-full text-left px-4 py-3 hover:bg-violet-50 dark:hover:bg-violet-900/20 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-3 group border-b border-slate-50 dark:border-slate-800 last:border-0"
+                                        >
+                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 group-hover:bg-violet-100 group-hover:text-violet-600 transition-colors">
+                                                <TransactionsIcon className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex flex-col items-start overflow-hidden">
+                                                <span className="font-bold text-sm truncate w-full">{suggestion.description}</span>
+                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate w-full flex items-center gap-1 mt-0.5">
+                                                    <BalanceIcon className="w-2.5 h-2.5" /> {suggestion.accountName}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <button 
                         type="button" 
@@ -371,23 +481,25 @@ const TransactionForm: React.FC<{
             </div>
 
             {/* FOOTER ACTIONS */}
-            <div className="-mx-6 md:-mx-8 px-6 pt-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 mt-6 items-center">
-                <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
+            <div className="-mx-6 md:-mx-8 px-6 pt-4 md:px-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-end gap-3 mt-6 items-center">
+                <button type="button" onClick={onClose} className="w-full sm:w-auto order-3 sm:order-1 px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
                 
-                {/* Save and New Button - Only show when creating new transactions */}
-                {!transaction && (
-                    <button 
-                        type="button"
-                        onClick={(e) => handleSaveInternal(e, true)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-bold hover:bg-violet-200 dark:hover:bg-violet-900/50 shadow-lg shadow-violet-500/10 transition-all"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        <span className="hidden sm:inline">Salvar e Nova</span>
-                        <span className="sm:hidden">+ Nova</span>
-                    </button>
-                )}
+                <div className="flex gap-3 w-full sm:w-auto order-1 sm:order-2 flex-grow sm:flex-grow-0 justify-end">
+                    {!transaction && (
+                        <button 
+                            type="button"
+                            onClick={(e) => handleSaveInternal(e, true)}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-600 text-white font-bold shadow-lg shadow-violet-500/20 transition-all text-sm whitespace-nowrap"
+                        >
+                            <PlusIcon className="w-4 h-4 shrink-0" />
+                            <span>Salvar e Nova</span>
+                        </button>
+                    )}
 
-                <button type="submit" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all">Salvar</button>
+                    <button type="submit" className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all text-sm min-w-[80px]">
+                        Salvar
+                    </button>
+                </div>
             </div>
         </form>
     );
@@ -409,7 +521,7 @@ const InstallmentForm: React.FC<{
     onClose: () => void;
     preselectedData?: { accountId?: string };
 }> = ({ accounts, categories, subcategories, onSave, onClose, preselectedData }) => {
-    const [description, setDescription] = useState('');
+    const [description, setParaDescription] = useState('');
     const [totalAmount, setTotalAmount] = useState(0);
     const [installments, setInstallments] = useState(2);
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -445,7 +557,7 @@ const InstallmentForm: React.FC<{
         <form onSubmit={handleSubmit} className="space-y-4 pb-32">
             <div>
                 <label className={labelClass}>Descrição da Compra</label>
-                <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className={baseInputClass} placeholder="Ex: Notebook Novo"/>
+                <input type="text" value={description} onChange={e => setParaDescription(e.target.value)} required className={baseInputClass} placeholder="Ex: Notebook Novo"/>
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -516,7 +628,7 @@ const TransferForm: React.FC<{
     const [toAccountId, setToAccountId] = useState('');
     const [amount, setAmount] = useState(0);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [description, setDescription] = useState('');
+    const [description, setParaDescription] = useState('');
     
     const baseInputClass = "w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-shadow outline-none";
     const labelClass = "block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5";
@@ -579,7 +691,7 @@ const TransferForm: React.FC<{
            
              <div>
                 <label className={labelClass}>Observação (Opcional)</label>
-                <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
+                <input type="text" value={description} onChange={e => setParaDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
             </div>
 
             {/* FOOTER ACTIONS */}
@@ -608,7 +720,7 @@ const EditTransferForm: React.FC<{
     const [toAccountId, setToAccountId] = useState('');
     const [amount, setAmount] = useState(0);
     const [date, setDate] = useState('');
-    const [description, setDescription] = useState('');
+    const [description, setParaDescription] = useState('');
     
     const baseInputClass = "w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl p-3 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-shadow outline-none";
     const labelClass = "block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5";
@@ -630,9 +742,9 @@ const EditTransferForm: React.FC<{
         const descRegex = /^Transferência (?:para|de) .*?(?:: (.*))?$/;
         const match = expensePart.description.match(descRegex);
         if (match && match[1]) {
-            setDescription(match[1]);
+            setParaDescription(match[1]);
         } else {
-            setDescription('');
+            setParaDescription('');
         }
     }, [editingTransfer, transactions]);
 
@@ -684,7 +796,7 @@ const EditTransferForm: React.FC<{
            
              <div>
                 <label className={labelClass}>Observação (Opcional)</label>
-                <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
+                <input type="text" value={description} onChange={e => setParaDescription(e.target.value)} className={baseInputClass} placeholder="Motivo da transferência"/>
             </div>
 
             {/* FOOTER ACTIONS */}
@@ -1478,6 +1590,7 @@ const App: React.FC = () => {
                     accounts={accounts}
                     categories={categories}
                     subcategories={subcategories}
+                    allTransactions={transactions}
                     onSave={handleSaveTransaction}
                     onClose={handleCloseTransactionModal}
                     preselectedData={preselectedData}
