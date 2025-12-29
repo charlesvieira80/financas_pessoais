@@ -45,13 +45,19 @@ const ImportReviewModal: React.FC<{
     isSaving: boolean;
 }> = ({ isOpen, onClose, transactions, accounts, onRemove, onEdit, onConfirm, isSaving }) => {
     const [targetAccountId, setTargetAccountId] = useState('');
-    const totalAmount = transactions.reduce((acc, t) => t.type === TransactionType.INCOME ? acc + t.amount : acc - t.amount, 0);
+    
+    // Sort transactions by date: oldest to newest
+    const sortedTransactions = useMemo(() => {
+        return [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [transactions]);
+
+    const totalAmount = sortedTransactions.reduce((acc, t) => t.type === TransactionType.INCOME ? acc + t.amount : acc - t.amount, 0);
     
     // Auto-select first account if available and none selected
     useEffect(() => {
         if (isOpen && accounts.length > 0 && !targetAccountId) {
             // Try to find if incoming transactions have a common accountId (passed from view filter)
-            const commonId = transactions[0]?.accountId;
+            const commonId = sortedTransactions[0]?.accountId;
             if (commonId && accounts.some(a => a.id === commonId)) {
                 setTargetAccountId(commonId);
             } else {
@@ -61,7 +67,7 @@ const ImportReviewModal: React.FC<{
     }, [isOpen, accounts]);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Revisar Importação (${transactions.length})`} size="3xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Revisar Importação (${sortedTransactions.length})`} size="3xl">
             <div className="flex flex-col h-full max-h-[70vh]">
                 <div className="mb-4 space-y-4">
                     <div className="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-100 dark:border-violet-900/30 flex justify-between items-center">
@@ -100,7 +106,7 @@ const ImportReviewModal: React.FC<{
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {transactions.map((t) => (
+                            {sortedTransactions.map((t) => (
                                 <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                     <td className="p-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{formatDate(t.date)}</td>
                                     <td className="p-3 text-slate-800 dark:text-slate-200">{t.description}</td>
@@ -133,7 +139,7 @@ const ImportReviewModal: React.FC<{
                     </button>
                     <button 
                         onClick={() => onConfirm(targetAccountId)} 
-                        disabled={isSaving || transactions.length === 0 || !targetAccountId}
+                        disabled={isSaving || sortedTransactions.length === 0 || !targetAccountId}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold shadow-lg shadow-violet-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? (
@@ -283,11 +289,13 @@ const TransactionForm: React.FC<{
             );
 
         if (lastTx) {
-            setAmount(lastTx.amount);
+            // Updated logic: Fill all fields EXCEPT amount (reset to 0) and date (keep current form date)
+            setAmount(0); 
             setType(lastTx.type);
             setAccountId(lastTx.accountId);
             setCategoryId(lastTx.categoryId);
             setSubcategoryId(lastTx.subcategoryId);
+            // We do NOT call setDate(...) here so it maintains the current state of the form.
         }
     };
 
