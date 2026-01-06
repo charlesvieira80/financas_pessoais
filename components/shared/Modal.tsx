@@ -13,14 +13,23 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-      if(isOpen) {
-          setShowModal(true);
-          document.body.style.overflow = 'hidden';
-      } else {
-          const timer = setTimeout(() => setShowModal(false), 200); // Wait for animation
-          document.body.style.overflow = 'unset';
-          return () => clearTimeout(timer);
-      }
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (isOpen) {
+      setShowModal(true);
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Quando fechando, aguarda a animação e restaura o scroll
+      document.body.style.overflow = 'unset';
+      timer = setTimeout(() => setShowModal(false), 200);
+    }
+
+    // Função de limpeza fundamental: Garante que o scroll seja restaurado
+    // se o modal for desmontado do DOM enquanto aberto ou fechando.
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   if (!showModal && !isOpen) return null;
