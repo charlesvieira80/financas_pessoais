@@ -3,7 +3,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 import { Transaction, Category, Account, TransactionType, Subcategory, ActiveView } from '../types';
 import { formatCurrency, formatMonthYear } from '../utils';
 import { getFinancialInsights } from '../services/geminiService';
-import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon, FilterIcon, XIcon } from './shared/icons';
+import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon, FilterIcon, XIcon, BalanceIcon } from './shared/icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
 
@@ -26,25 +26,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
     const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     
-    // Filter State
+    // Category Filter State
     const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const filterRef = useRef<HTMLDivElement>(null);
+    const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
+    const categoryFilterRef = useRef<HTMLDivElement>(null);
 
-    // Click outside to close filter menu
+    // Account Filter State
+    const [hiddenAccountIds, setHiddenAccountIds] = useState<string[]>([]);
+    const [isAccountFilterOpen, setIsAccountFilterOpen] = useState(false);
+    const accountFilterRef = useRef<HTMLDivElement>(null);
+
+    // Click outside to close filter menus
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-                setIsFilterOpen(false);
+            if (categoryFilterRef.current && !categoryFilterRef.current.contains(event.target as Node)) {
+                setIsCategoryFilterOpen(false);
+            }
+            if (accountFilterRef.current && !accountFilterRef.current.contains(event.target as Node)) {
+                setIsAccountFilterOpen(false);
             }
         };
-        if (isFilterOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+        document.addEventListener('mousedown', handleClickOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isFilterOpen]);
+    }, []);
 
     const gridColor = theme === 'dark' ? '#334155' : '#e2e8f0';
     const textColor = theme === 'dark' ? '#94a3b8' : '#64748b';
@@ -78,9 +84,37 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         });
     };
 
-    const clearFilters = () => {
-        setHiddenCategoryIds([]);
+    const toggleAccountFilter = (accountId: string) => {
+        setHiddenAccountIds(prev => {
+            if (prev.includes(accountId)) {
+                return prev.filter(id => id !== accountId);
+            } else {
+                return [...prev, accountId];
+            }
+        });
     };
+
+    const clearCategoryFilters = () => setHiddenCategoryIds([]);
+    const clearAccountFilters = () => setHiddenAccountIds([]);
+
+    // --- Balance Calculation Helpers ---
+    
+    const startOfPeriodBalance = useMemo(() => {
+        // Only include accounts that are not hidden
+        const activeAccounts = accounts.filter(acc => !hiddenAccountIds.includes(acc.id));
+        const initialBalances = activeAccounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
+        
+        const startLimit = viewMode === 'monthly'
+            ? new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1))
+            : new Date(Date.UTC(currentDate.getFullYear(), 0, 1));
+        
+        // Include transactions before the period for VISIBLE accounts
+        const previousNet = transactions
+            .filter(t => !hiddenAccountIds.includes(t.accountId) && new Date(t.date) < startLimit)
+            .reduce((sum, t) => t.type === TransactionType.INCOME ? sum + t.amount : sum - t.amount, 0);
+            
+        return initialBalances + previousNet;
+    }, [accounts, transactions, currentDate, viewMode, hiddenAccountIds]);
 
     // 1. Filter by Date
     const filteredTransactionsByDate = useMemo(() => {
@@ -93,12 +127,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         });
     }, [transactions, currentDate, viewMode]);
 
-    // 2. Filter by Category (Hidden IDs)
-    // This filtered list is used for Charts and Insights
+    // 2. Filter by Category and Account
     const filteredTransactionsVisible = useMemo(() => {
-        if (hiddenCategoryIds.length === 0) return filteredTransactionsByDate;
-        return filteredTransactionsByDate.filter(t => !t.categoryId || !hiddenCategoryIds.includes(t.categoryId));
-    }, [filteredTransactionsByDate, hiddenCategoryIds]);
+        return filteredTransactionsByDate.filter(t => {
+            const isCategoryVisible = !t.categoryId || !hiddenCategoryIds.includes(t.categoryId);
+            const isAccountVisible = !hiddenAccountIds.includes(t.accountId);
+            return isCategoryVisible && isAccountVisible;
+        });
+    }, [filteredTransactionsByDate, hiddenCategoryIds, hiddenAccountIds]);
 
     const nonTransferTransactions = useMemo(() => {
         return filteredTransactionsVisible.filter(t => !t.transferId);
@@ -110,6 +146,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
         const data = Array.from({ length: daysInMonth }, (_, i) => ({
             date: (i + 1).toString(),
             receita: 0,
@@ -127,8 +164,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
             }
         });
 
-        return data;
-    }, [currentDate, nonTransferTransactions, viewMode]);
+        let runningBalance = startOfPeriodBalance;
+        return data.map(d => {
+            runningBalance += (d.receita - d.despesas);
+            return { ...d, saldo: runningBalance };
+        });
+    }, [currentDate, nonTransferTransactions, viewMode, startOfPeriodBalance]);
     
     const monthlyData = useMemo(() => {
         if (viewMode !== 'yearly') return [];
@@ -143,8 +184,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                 data[monthIndex].despesas += t.amount;
             }
         });
-        return data;
-    }, [viewMode, nonTransferTransactions]);
+
+        let runningBalance = startOfPeriodBalance;
+        return data.map(d => {
+            runningBalance += (d.receita - d.despesas);
+            return { ...d, saldo: runningBalance };
+        });
+    }, [viewMode, nonTransferTransactions, startOfPeriodBalance]);
 
     const pieChartData = useMemo(() => {
         if (!selectedCategoryId) {
@@ -181,21 +227,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         }
     }, [nonTransferTransactions, categories, subcategories, selectedCategoryId]);
     
-    // Total Balance Logic - Should NOT be affected by Category Filters to maintain Account Reality
+    // Total Balance Logic - Weighted by active accounts only
     const totalBalance = useMemo(() => {
-        const initialBalances = accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
+        const activeAccounts = accounts.filter(acc => !hiddenAccountIds.includes(acc.id));
+        const initialBalances = activeAccounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
         
         const endOfPeriod = viewMode === 'monthly'
             ? new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999))
             : new Date(Date.UTC(currentDate.getFullYear(), 11, 31, 23, 59, 59, 999));
 
         const netTransactions = transactions
-            .filter(t => new Date(t.date) <= endOfPeriod)
+            .filter(t => !hiddenAccountIds.includes(t.accountId) && new Date(t.date) <= endOfPeriod)
             .reduce((sum, t) => {
                 return t.type === TransactionType.INCOME ? sum + t.amount : sum - t.amount;
             }, 0);
         return initialBalances + netTransactions;
-    }, [accounts, transactions, currentDate, viewMode]);
+    }, [accounts, transactions, currentDate, viewMode, hiddenAccountIds]);
 
     const handleGetInsights = useCallback(async () => {
         setIsLoadingInsights(true);
@@ -204,10 +251,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
             ? `de ${formatMonthYear(currentDate)}` 
             : `do ano de ${currentDate.getFullYear()}`;
 
-        const result = await getFinancialInsights(nonTransferTransactions, categories, accounts, period);
+        // Insights should also respect the selected accounts
+        const result = await getFinancialInsights(nonTransferTransactions, categories, accounts.filter(acc => !hiddenAccountIds.includes(acc.id)), period);
         setInsights(result);
         setIsLoadingInsights(false);
-    }, [nonTransferTransactions, categories, accounts, viewMode, currentDate]);
+    }, [nonTransferTransactions, categories, accounts, viewMode, currentDate, hiddenAccountIds]);
 
     const handlePieClick = (data: any) => {
         if (!selectedCategoryId && data.payload?.id) {
@@ -260,7 +308,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
         <div className="p-4 md:p-10 max-w-7xl mx-auto" {...swipeHandlers}>
             <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-6 md:mb-8">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Financeiro</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Painel Geral</h1>
                     <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Visão geral do seu patrimônio e movimentações.</p>
                 </div>
                 
@@ -291,67 +339,132 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                         </div>
                     </div>
 
-                    {/* Filter Button */}
-                    <div className="relative z-20" ref={filterRef}>
-                        <button 
-                            onClick={() => setIsFilterOpen(!isFilterOpen)} 
-                            className={`flex items-center justify-center gap-2 p-3.5 sm:px-5 rounded-2xl border font-semibold transition-all w-full sm:w-auto h-full ${
-                                isFilterOpen || hiddenCategoryIds.length > 0
-                                ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30' 
-                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                            }`}
-                        >
-                            <FilterIcon className="w-5 h-5" />
-                            <span className="hidden sm:inline">Categorias</span>
-                            {hiddenCategoryIds.length > 0 && (
-                                <span className="flex items-center justify-center w-5 h-5 bg-white text-violet-600 rounded-full text-xs font-bold">
-                                    {categories.length - hiddenCategoryIds.length}
-                                </span>
-                            )}
-                        </button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        {/* Account Filter Button */}
+                        <div className="relative z-20 flex-1 sm:flex-none" ref={accountFilterRef}>
+                            <button 
+                                onClick={() => setIsAccountFilterOpen(!isAccountFilterOpen)} 
+                                className={`flex items-center justify-center gap-2 p-3.5 sm:px-5 rounded-2xl border font-semibold transition-all w-full h-full ${
+                                    isAccountFilterOpen || hiddenAccountIds.length > 0
+                                    ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30' 
+                                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                <BalanceIcon className="w-5 h-5" />
+                                <span className="hidden sm:inline">Contas</span>
+                                {hiddenAccountIds.length > 0 && (
+                                    <span className="flex items-center justify-center w-5 h-5 bg-white text-violet-600 rounded-full text-xs font-bold">
+                                        {accounts.length - hiddenAccountIds.length}
+                                    </span>
+                                )}
+                            </button>
 
-                        {/* Dropdown Menu */}
-                        {isFilterOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-content-in origin-top-right">
-                                <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-800 dark:text-white text-sm">Filtrar Visualização</h3>
-                                    {hiddenCategoryIds.length > 0 && (
-                                        <button onClick={clearFilters} className="text-xs font-semibold text-rose-500 hover:text-rose-600">
-                                            Limpar
-                                        </button>
-                                    )}
+                            {/* Account Dropdown Menu */}
+                            {isAccountFilterOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-content-in origin-top-right">
+                                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-800 dark:text-white text-sm">Contas Visíveis</h3>
+                                        {hiddenAccountIds.length > 0 && (
+                                            <button onClick={clearAccountFilters} className="text-xs font-semibold text-rose-500 hover:text-rose-600">
+                                                Limpar
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2">
+                                        {accounts.map(acc => (
+                                            <label key={acc.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                                                    !hiddenAccountIds.includes(acc.id) 
+                                                    ? 'bg-violet-600 border-violet-600' 
+                                                    : 'border-slate-300 dark:border-slate-600'
+                                                }`}>
+                                                    {!hiddenAccountIds.includes(acc.id) && (
+                                                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="hidden" 
+                                                    checked={!hiddenAccountIds.includes(acc.id)}
+                                                    onChange={() => toggleAccountFilter(acc.id)}
+                                                />
+                                                <span className={`text-sm font-medium ${!hiddenAccountIds.includes(acc.id) ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500 line-through'}`}>
+                                                    {acc.name}
+                                                </span>
+                                            </label>
+                                        ))}
+                                        {accounts.length === 0 && (
+                                            <p className="text-xs text-center text-slate-400 p-2">Nenhuma conta encontrada.</p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="max-h-64 overflow-y-auto p-2">
-                                    {categories.map(cat => (
-                                        <label key={cat.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
-                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
-                                                !hiddenCategoryIds.includes(cat.id) 
-                                                ? 'bg-violet-600 border-violet-600' 
-                                                : 'border-slate-300 dark:border-slate-600'
-                                            }`}>
-                                                {!hiddenCategoryIds.includes(cat.id) && (
-                                                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                )}
-                                            </div>
-                                            <input 
-                                                type="checkbox" 
-                                                className="hidden" 
-                                                checked={!hiddenCategoryIds.includes(cat.id)}
-                                                onChange={() => toggleCategoryFilter(cat.id)}
-                                            />
-                                            <span className={`text-sm font-medium ${!hiddenCategoryIds.includes(cat.id) ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500 line-through'}`}>
-                                                {cat.name}
-                                            </span>
-                                        </label>
-                                    ))}
-                                    {categories.length === 0 && (
-                                        <p className="text-xs text-center text-slate-400 p-2">Nenhuma categoria encontrada.</p>
-                                    )}
+                            )}
+                        </div>
+
+                        {/* Category Filter Button */}
+                        <div className="relative z-20 flex-1 sm:flex-none" ref={categoryFilterRef}>
+                            <button 
+                                onClick={() => setIsCategoryFilterOpen(!isCategoryFilterOpen)} 
+                                className={`flex items-center justify-center gap-2 p-3.5 sm:px-5 rounded-2xl border font-semibold transition-all w-full h-full ${
+                                    isCategoryFilterOpen || hiddenCategoryIds.length > 0
+                                    ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30' 
+                                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                <FilterIcon className="w-5 h-5" />
+                                <span className="hidden sm:inline">Categorias</span>
+                                {hiddenCategoryIds.length > 0 && (
+                                    <span className="flex items-center justify-center w-5 h-5 bg-white text-violet-600 rounded-full text-xs font-bold">
+                                        {categories.length - hiddenCategoryIds.length}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Category Dropdown Menu */}
+                            {isCategoryFilterOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-content-in origin-top-right">
+                                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-800 dark:text-white text-sm">Categorias Visíveis</h3>
+                                        {hiddenCategoryIds.length > 0 && (
+                                            <button onClick={clearCategoryFilters} className="text-xs font-semibold text-rose-500 hover:text-rose-600">
+                                                Limpar
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto p-2">
+                                        {categories.map(cat => (
+                                            <label key={cat.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                                                    !hiddenCategoryIds.includes(cat.id) 
+                                                    ? 'bg-violet-600 border-violet-600' 
+                                                    : 'border-slate-300 dark:border-slate-600'
+                                                }`}>
+                                                    {!hiddenCategoryIds.includes(cat.id) && (
+                                                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="hidden" 
+                                                    checked={!hiddenCategoryIds.includes(cat.id)}
+                                                    onChange={() => toggleCategoryFilter(cat.id)}
+                                                />
+                                                <span className={`text-sm font-medium ${!hiddenCategoryIds.includes(cat.id) ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500 line-through'}`}>
+                                                    {cat.name}
+                                                </span>
+                                            </label>
+                                        ))}
+                                        {categories.length === 0 && (
+                                            <p className="text-xs text-center text-slate-400 p-2">Nenhuma categoria encontrada.</p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </header>
@@ -366,7 +479,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                     aria-label="Ver detalhes do saldo"
                 >
                      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 md:w-32 md:h-32 bg-violet-50 dark:bg-violet-900/20 rounded-full blur-3xl group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30 transition-colors duration-500"></div>
-                    <h2 className="relative text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo Total Acumulado</h2>
+                    <h2 className="relative text-xs md:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Saldo das Contas Selecionadas</h2>
                     <div className="relative flex items-baseline gap-2 flex-wrap">
                         <span className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 break-all">
                             {formatCurrency(totalBalance)}
@@ -374,14 +487,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                     </div>
                     <p className="relative mt-3 text-xs md:text-sm font-medium text-slate-400 dark:text-slate-500 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        Atualizado em {endOfPeriodFormatted}
+                        Posição em {endOfPeriodFormatted}
                     </p>
                 </div>
 
-                {hiddenCategoryIds.length > 0 && (
+                {(hiddenCategoryIds.length > 0 || hiddenAccountIds.length > 0) && (
                      <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-xl text-sm border border-amber-100 dark:border-amber-900/30">
                         <FilterIcon className="w-4 h-4" />
-                        <span>Visualizando dados parciais. {categories.length - hiddenCategoryIds.length} de {categories.length} categorias selecionadas.</span>
+                        <span>Visualizando dados parciais. 
+                            {hiddenAccountIds.length > 0 && ` ${accounts.length - hiddenAccountIds.length}/${accounts.length} contas.`}
+                            {hiddenCategoryIds.length > 0 && ` ${categories.length - hiddenCategoryIds.length}/${categories.length} categorias.`}
+                        </span>
                     </div>
                 )}
 
@@ -403,6 +519,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                         <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
                                             <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
@@ -432,6 +552,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                     <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
                                     <Area type="monotone" dataKey="receita" name="Receitas" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" activeDot={{ r: 6, strokeWidth: 0 }} />
                                     <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                                    <Area type="monotone" dataKey="saldo" name="Saldo Acumulado" stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorBalance)" activeDot={{ r: 4, strokeWidth: 0 }} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -547,7 +668,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, categories, account
                                     {isLoadingInsights ? (
                                         <p className="animate-pulse">A IA está analisando suas finanças...</p>
                                     ) : nonTransferTransactions.length === 0 && filteredTransactionsByDate.length > 0 ? (
-                                        <p>Apenas transferências ou categorias ocultas. Ajuste os filtros para ver análises.</p>
+                                        <p>Apenas transferências ou filtros aplicados. Ajuste os filtros para ver análises.</p>
                                     ) : nonTransferTransactions.length > 0 ? (
                                         <p>Clique no botão acima para descobrir oportunidades de economia.</p>
                                     ) : (
