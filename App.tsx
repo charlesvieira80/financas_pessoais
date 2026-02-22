@@ -329,6 +329,7 @@ const TransactionForm: React.FC<{
 
         const newTransaction: Omit<Transaction, 'id'> | Transaction = {
             ...(transaction && { id: transaction.id }),
+            createdAt: transaction?.createdAt,
             description: finalDescription,
             amount: +amount,
             date: utcDate.toISOString(),
@@ -1015,7 +1016,13 @@ const App: React.FC = () => {
     const updateSubcategory = (subcategory: Subcategory) => updateInFirestore('subcategories', subcategory);
     const deleteSubcategory = (id: string) => deleteFromFirestore('subcategories', id);
 
-    const addTransaction = (transaction: Omit<Transaction, 'id'>) => addToFirestore('transactions', transaction);
+    const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
+        const transactionWithTimestamp = {
+            ...transaction,
+            createdAt: transaction.createdAt || Date.now()
+        };
+        addToFirestore('transactions', transactionWithTimestamp);
+    };
     const updateTransaction = (transaction: Transaction) => updateInFirestore('transactions', transaction);
     const deleteTransaction = async (id: string) => {
         const tx = transactions.find(t => t.id === id);
@@ -1205,6 +1212,8 @@ const App: React.FC = () => {
         const [year, month, day] = data.date.split('-').map(Number);
         const utcDate = new Date(Date.UTC(year, month - 1, day));
         
+        const now = Date.now();
+        
         const expenseTransaction: Omit<Transaction, 'id'> = {
             description: `Transferência para ${toAccount.name}${description ? `: ${description}` : ''}`,
             amount,
@@ -1214,6 +1223,7 @@ const App: React.FC = () => {
             subcategoryId: '',
             type: TransactionType.EXPENSE,
             transferId,
+            createdAt: now,
         };
         addTransaction(expenseTransaction);
 
@@ -1226,6 +1236,7 @@ const App: React.FC = () => {
             subcategoryId: '',
             type: TransactionType.INCOME,
             transferId,
+            createdAt: now + 1,
         };
         addTransaction(incomeTransaction);
 
@@ -1333,6 +1344,7 @@ const App: React.FC = () => {
                 categoryId,
                 subcategoryId,
                 type: TransactionType.EXPENSE,
+                createdAt: Date.now() + i,
             };
             addTransaction(newTransaction);
         }

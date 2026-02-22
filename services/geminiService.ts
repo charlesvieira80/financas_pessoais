@@ -2,19 +2,21 @@ import { GoogleGenAI } from "@google/genai";
 // FIX: Import the 'Account' type.
 import { Account, Category, Transaction, TransactionType } from "../types";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-    console.error("Gemini API key is not set. Please set the API_KEY environment variable.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+const getAiClient = () => {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    console.error("Gemini API key is not set. Please set the GEMINI_API_KEY or API_KEY environment variable.");
+    return null;
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const suggestCategory = async (
   description: string,
   categories: Category[],
 ): Promise<{ categoryId: string; subcategoryId: string } | null> => {
-  if (!API_KEY) return null;
+  const ai = getAiClient();
+  if (!ai) return null;
 
   // Changed from 'gemini-flash-latest' to 'gemini-2.5-flash' for better stability and quota management
   const model = 'gemini-2.5-flash';
@@ -60,7 +62,8 @@ export const getFinancialInsights = async (
     accounts: Account[],
     period: string
 ): Promise<string> => {
-  if (!API_KEY) return "A chave da API não está configurada. Por favor, configure sua chave da API Gemini.";
+  const ai = getAiClient();
+  if (!ai) return "A chave da API não está configurada. Por favor, configure sua chave da API Gemini.";
 
   // Changed from 'gemini-2.5-pro' to 'gemini-2.5-flash' to reduce quota consumption
   const model = 'gemini-2.5-flash';

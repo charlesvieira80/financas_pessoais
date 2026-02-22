@@ -35,6 +35,7 @@ export interface Transaction {
   subcategoryId: string;
   type: TransactionType;
   transferId?: string;
+  createdAt?: number;
 }
 
 export interface UserProfile {

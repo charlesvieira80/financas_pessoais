@@ -82,7 +82,18 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                 }
                 return true;
             })
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => {
+                // Sort by registration order (createdAt) descending if available
+                if (a.createdAt && b.createdAt) {
+                    return b.createdAt - a.createdAt;
+                }
+                // If one has createdAt and the other doesn't, prioritize the one with createdAt (assuming it's newer)
+                if (a.createdAt) return -1;
+                if (b.createdAt) return 1;
+                
+                // Fallback to date descending for legacy data
+                return new Date(b.date).getTime() - new Date(a.date).getTime();
+            });
     }, [transactions, currentDate, searchTerm, filterAccountId, filterCategoryId]);
 
     const changeMonth = (offset: number) => {

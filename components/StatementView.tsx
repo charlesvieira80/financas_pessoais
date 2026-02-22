@@ -95,7 +95,20 @@ const StatementView: React.FC<StatementViewProps> = ({
         const monthTransactions = transactions.filter(t => {
             const tDate = new Date(t.date);
             return t.accountId === selectedAccountId && tDate >= startDate && tDate <= endDate;
-        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        }).sort((a, b) => {
+            const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            
+            // Same date: sort by registration order (createdAt) ascending
+            if (a.createdAt && b.createdAt) {
+                return a.createdAt - b.createdAt;
+            }
+            // Fallback for legacy data (treat missing createdAt as older)
+            if (a.createdAt) return 1;
+            if (b.createdAt) return -1;
+            
+            return 0;
+        });
         
         let totalIncome = 0;
         let totalExpense = 0;
