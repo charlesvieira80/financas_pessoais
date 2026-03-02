@@ -329,7 +329,7 @@ const TransactionForm: React.FC<{
 
         const newTransaction: Omit<Transaction, 'id'> | Transaction = {
             ...(transaction && { id: transaction.id }),
-            createdAt: transaction?.createdAt,
+            createdAt: transaction?.createdAt || Date.now(),
             description: finalDescription,
             amount: +amount,
             date: utcDate.toISOString(),
@@ -983,15 +983,23 @@ const App: React.FC = () => {
     // Generic Add
     const addToFirestore = async (collectionName: string, data: any) => {
         if (!user || !db) return;
-        await addDoc(collection(db, collectionName), { ...data, userId: user.id });
+        // Filter out undefined values as Firestore doesn't support them
+        const cleanData = Object.fromEntries(
+            Object.entries(data).filter(([_, v]) => v !== undefined)
+        );
+        await addDoc(collection(db, collectionName), { ...cleanData, userId: user.id });
     };
 
     // Generic Update
     const updateInFirestore = async (collectionName: string, data: any) => {
         if (!user || !db) return;
         const { id, ...rest } = data;
+        // Filter out undefined values as Firestore doesn't support them
+        const cleanData = Object.fromEntries(
+            Object.entries(rest).filter(([_, v]) => v !== undefined)
+        );
         const docRef = doc(db, collectionName, id);
-        await updateDoc(docRef, rest);
+        await updateDoc(docRef, cleanData);
     };
 
     // Generic Delete
@@ -1167,6 +1175,7 @@ const App: React.FC = () => {
 
                         const updated = {
                             ...tToUpdate,
+                            createdAt: tToUpdate.createdAt || Date.now(),
                             date: nextDate.toISOString(),
                             amount: updatedTransaction.amount,
                             description: `${newBaseDescription} (${tMatch[2]}/${tMatch[3]})`,
