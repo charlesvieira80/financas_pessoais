@@ -54,6 +54,7 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [filterAccountId, setFilterAccountId] = useState('');
     const [filterCategoryId, setFilterCategoryId] = useState('');
+    const [isGlobalSearch, setIsGlobalSearch] = useState(false);
     
     // OFX/XLSX import states remain here for now as they are specific to this view's buttons
     const [isImportingOFX, setIsImportingOFX] = useState(false);
@@ -68,8 +69,10 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                 // FIX: Use UTC methods to compare against the local date's components.
                 // This ensures a date like '2025-12-01T00:00:00.000Z' is correctly
                 // identified as belonging to December, regardless of the user's timezone.
-                if (tDate.getUTCFullYear() !== currentDate.getFullYear() || tDate.getUTCMonth() !== currentDate.getMonth()) {
-                    return false;
+                if (!isGlobalSearch) {
+                    if (tDate.getUTCFullYear() !== currentDate.getFullYear() || tDate.getUTCMonth() !== currentDate.getMonth()) {
+                        return false;
+                    }
                 }
                 if (filterAccountId && t.accountId !== filterAccountId) {
                     return false;
@@ -94,7 +97,7 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                 // Fallback to date descending for legacy data
                 return new Date(b.date).getTime() - new Date(a.date).getTime();
             });
-    }, [transactions, currentDate, searchTerm, filterAccountId, filterCategoryId]);
+    }, [transactions, currentDate, searchTerm, filterAccountId, filterCategoryId, isGlobalSearch]);
 
     const changeMonth = (offset: number) => {
         setCurrentDate(prev => {
@@ -255,12 +258,13 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                                 return a.name.localeCompare(b.name);
                             }).map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                         </select>
-                        {(searchTerm || filterAccountId || filterCategoryId) && (
+                        {(searchTerm || filterAccountId || filterCategoryId || isGlobalSearch) && (
                             <button
                                 onClick={() => {
                                     setSearchTerm('');
                                     setFilterAccountId('');
                                     setFilterCategoryId('');
+                                    setIsGlobalSearch(false);
                                 }}
                                 className="px-4 py-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors flex items-center gap-1.5 font-medium text-sm whitespace-nowrap"
                             >
@@ -271,14 +275,29 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                     </div>
                 </div>
 
-                {/* Month Navigation */}
-                <div className="flex justify-between items-center px-4 md:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-                    <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon /></button>
-                    <h2 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">{formatMonthYear(currentDate)}</h2>
-                    <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon /></button>
+                {/* Global Search Toggle Row */}
+                <div className="px-4 md:px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm md:text-base text-slate-700 dark:text-slate-300 cursor-pointer font-medium select-none">
+                        <input
+                            type="checkbox"
+                            checked={isGlobalSearch}
+                            onChange={(e) => setIsGlobalSearch(e.target.checked)}
+                            className="w-4 h-4 text-violet-600 bg-white border-slate-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-slate-900 focus:ring-2 dark:bg-slate-800 dark:border-slate-600 transition-colors cursor-pointer"
+                        />
+                        Buscar em todo o histórico (ignorar mês)
+                    </label>
                 </div>
+
+                {/* Month Navigation */}
+                {!isGlobalSearch && (
+                    <div className="flex justify-between items-center px-4 md:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronLeftIcon /></button>
+                        <h2 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">{formatMonthYear(currentDate)}</h2>
+                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"><ChevronRightIcon /></button>
+                    </div>
+                )}
                 
-                <div key={currentDate.toISOString()} className="animate-content-in">
+                <div key={isGlobalSearch ? 'global' : currentDate.toISOString()} className="animate-content-in">
                     {/* DESKTOP TABLE VIEW */}
                     <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
