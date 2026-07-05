@@ -80,8 +80,12 @@ const TransactionsView: React.FC<TransactionsViewProps> = ({
                 if (filterCategoryId && t.categoryId !== filterCategoryId) {
                     return false;
                 }
-                if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    return false;
+                if (searchTerm) {
+                    const normalizedSearchTerm = searchTerm.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    const normalizedDescription = t.description.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    if (!normalizedDescription.includes(normalizedSearchTerm)) {
+                        return false;
+                    }
                 }
                 return true;
             })
